@@ -25,8 +25,7 @@ def json_modu(json_dosyasi: str, sayfa_adi: str):
         sys.exit(1)
 
     if not ANTHROPIC_API_KEY:
-        print("Hata: ANTHROPIC_API_KEY tanimli degil. .env dosyasini kontrol edin.")
-        sys.exit(1)
+        print("Bilgi: ANTHROPIC_API_KEY tanimli degil, Claude olmadan calisiliyor (sablon caption, temel kategori).")
 
     claude = ClaudeProcessor()
     video_gen = VideoGenerator(sayfa_adi=sayfa_adi)
@@ -89,8 +88,7 @@ def bot_modu():
         print("Hata: IG_USERNAME veya IG_PASSWORD tanimli degil. .env dosyasini kontrol edin.")
         sys.exit(1)
     if not ANTHROPIC_API_KEY:
-        print("Hata: ANTHROPIC_API_KEY tanimli degil. .env dosyasini kontrol edin.")
-        sys.exit(1)
+        print("Bilgi: ANTHROPIC_API_KEY tanimli degil, Claude olmadan calisiliyor.")
 
     from instagram_bot import InstagramBot
     bot = InstagramBot()
