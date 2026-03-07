@@ -108,6 +108,7 @@ def main():
     # Yeni bot modları
     parser.add_argument("--bot", action="store_true", help="Tum bot fonksiyonlarini baslat")
     parser.add_argument("--dm-bot", action="store_true", help="Sadece DM botunu baslat")
+    parser.add_argument("--share-bot", action="store_true", help="Sadece Paylasim botunu baslat")
     parser.add_argument("--follow-bot", metavar="TARGET", help="Sadece Takip botunu baslat (Hedef kullanıcı)")
 
     args = parser.parse_args()
@@ -116,6 +117,8 @@ def main():
         json_modu(args.json, args.page)
     elif args.dm_bot:
         bot_modu(mode="dm")
+    elif args.share_bot:
+        bot_modu(mode="share")
     elif args.follow_bot:
         bot_modu(mode="follow", follow_target=args.follow_bot)
     elif args.bot:

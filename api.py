@@ -22,6 +22,8 @@ DM_LOG_FILE = BASE_DIR / "dm_bot.log"
 DM_PID_FILE = BASE_DIR / "dm_bot.pid"
 FOLLOW_LOG_FILE = BASE_DIR / "follow_bot.log"
 FOLLOW_PID_FILE = BASE_DIR / "follow_bot.pid"
+SHARE_LOG_FILE = BASE_DIR / "share_bot.log"
+SHARE_PID_FILE = BASE_DIR / "share_bot.pid"
 
 app = FastAPI(title="Itiraf Reels Paneli")
 app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
@@ -211,6 +213,37 @@ async def follow_bot_stop():
 async def follow_bot_logs(satirlar: int = 150):
     if not FOLLOW_LOG_FILE.exists(): return {"satirlar": []}
     with open(FOLLOW_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()[-satirlar:]
+    return {"satirlar": [l.rstrip() for l in lines]}
+
+@app.get("/api/share_bot/status")
+async def share_bot_status():
+    return {"calisiyor": _bot_calisiyor(SHARE_PID_FILE)}
+
+@app.post("/api/share_bot/start")
+async def share_bot_start():
+    if _bot_calisiyor(SHARE_PID_FILE):
+        return {"status": "zaten_calisiyor"}
+    
+    log_f = open(SHARE_LOG_FILE, "a", encoding="utf-8")
+    proc = subprocess.Popen(
+        [sys.executable, "-u", str(BASE_DIR / "main.py"), "--share-bot"],
+        stdout=log_f, stderr=log_f, cwd=str(BASE_DIR),
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
+    SHARE_PID_FILE.write_text(str(proc.pid))
+    return {"status": "baslatildi", "pid": proc.pid}
+
+@app.post("/api/share_bot/stop")
+async def share_bot_stop():
+    if _bot_durdur(SHARE_PID_FILE):
+        return {"status": "durduruldu"}
+    return {"status": "zaten_durdu"}
+
+@app.get("/api/share_bot/logs")
+async def share_bot_logs(satirlar: int = 150):
+    if not SHARE_LOG_FILE.exists(): return {"satirlar": []}
+    with open(SHARE_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()[-satirlar:]
     return {"satirlar": [l.rstrip() for l in lines]}
 

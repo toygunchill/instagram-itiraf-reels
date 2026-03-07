@@ -210,13 +210,37 @@
 <div class="tabs">
   <div class="tab aktif" onclick="sekme('videolar', this)">Videolar <span id="video-sayac"></span></div>
   <div class="tab" onclick="sekme('hizli', this)">Hızlı Üret (JSON)</div>
+  <div class="tab" onclick="sekme('bot-share', this)">Paylaşım Botu</div>
   <div class="tab" onclick="sekme('bot-dm', this)">DM Botu</div>
   <div class="tab" onclick="sekme('bot-follow', this)">Takip Botu</div>
 </div>
 
 <main>
+...
+  <!-- === Share Bot === -->
+  <div class="panel" id="panel-bot-share">
+    <div class="kutu">
+      <div class="kutu-baslik">Paylaşım Botu Kontrolü</div>
+      <p style="font-size: 12px; color: var(--text2); margin-bottom: 15px;">Zamanlanmış videoları (JSON'dan gelenler) saati gelince otomatik paylaşır.</p>
+      <div class="durum-satir">
+        <div class="dot" id="share-bot-dot"></div>
+        <span class="durum-yazisi" id="share-bot-durum-yazisi">Kontrol ediliyor...</span>
+        <button class="btn btn-yesil" id="btn-share-start" onclick="botStart('share')">Botu Başlat</button>
+        <button class="btn btn-kirmizi" id="btn-share-stop" onclick="botStop('share')" style="display:none">Durdur</button>
+      </div>
+    </div>
 
-  <!-- === Videolar === -->
+    <div class="kutu">
+      <div class="log-header">
+        <span>Paylaşım Botu Logları</span>
+        <button class="log-temizle" onclick="logTemizle('share')">Temizle</button>
+      </div>
+      <div class="log-ekran" id="share-log-ekran"></div>
+    </div>
+  </div>
+
+  <!-- === DM Bot === -->
+
   <div class="panel aktif" id="panel-videolar">
     <div class="toolbar">
       <span class="toolbar-bilgi" id="toolbar-bilgi"></span>
@@ -333,7 +357,7 @@
   let aktifFiltre = 'hepsi';
   let logTimer = null;
   let prodTimer = null;
-  let sonLogs = { dm: 0, follow: 0 };
+  let sonLogs = { dm: 0, follow: 0, share: 0 };
 
   // ---- Sekmeler ----
   function sekme(id, el) {
@@ -345,8 +369,8 @@
     clearInterval(logTimer);
     clearInterval(prodTimer);
 
-    if (id === 'bot-dm' || id === 'bot-follow') {
-      const mode = id === 'bot-dm' ? 'dm' : 'follow';
+    if (id === 'bot-dm' || id === 'bot-follow' || id === 'bot-share') {
+      const mode = id === 'bot-dm' ? 'dm' : (id === 'bot-follow' ? 'follow' : 'share');
       logTimer = setInterval(() => logGuncelle(mode), 3000);
       logGuncelle(mode);
     } else if (id === 'hizli') {
@@ -435,6 +459,17 @@
       document.getElementById('btn-dm-stop').style.display = dm_aktif ? '' : 'none';
     } catch (_) {}
 
+    // Share Bot
+    try {
+      const r_sh = await fetch('/api/share_bot/status');
+      const d_sh = await r_sh.json();
+      const sh_aktif = d_sh.calisiyor;
+      document.getElementById('share-bot-dot').className = 'dot' + (sh_aktif ? ' aktif' : '');
+      document.getElementById('share-bot-durum-yazisi').textContent = sh_aktif ? 'Aktif' : 'Durdu';
+      document.getElementById('btn-share-start').style.display = sh_aktif ? 'none' : '';
+      document.getElementById('btn-share-stop').style.display = sh_aktif ? '' : 'none';
+    } catch (_) {}
+
     // Follow Bot
     try {
       const r_f = await fetch('/api/follow_bot/status');
@@ -445,16 +480,16 @@
       document.getElementById('btn-follow-start').style.display = f_aktif ? 'none' : '';
       document.getElementById('btn-follow-stop').style.display = f_aktif ? '' : 'none';
       document.getElementById('follow-target').disabled = f_aktif;
-// Stats
-const rs = await fetch('/api/follow/stats');
-const ds = await rs.json();
-document.getElementById('stat-followed').textContent = ds.followed || 0;
-document.getElementById('stat-followers').textContent = ds.followers || 0;
-document.getElementById('stat-following').textContent = ds.following || 0;
-} catch (_) {}
 
+      const rs = await fetch('/api/follow/stats');
+      const ds = await rs.json();
+      document.getElementById('stat-followed').textContent = ds.followed || 0;
+      document.getElementById('stat-followers').textContent = ds.followers || 0;
+      document.getElementById('stat-following').textContent = ds.following || 0;
+    } catch (_) {}
 
     const headerAktif = document.getElementById('dm-bot-dot').classList.contains('aktif') || 
+                        document.getElementById('share-bot-dot').classList.contains('aktif') || 
                         document.getElementById('follow-bot-dot').classList.contains('aktif');
     document.getElementById('header-dot').className = 'dot' + (headerAktif ? ' aktif' : '');
     document.getElementById('header-durum').textContent = headerAktif ? 'Botlar Çalışıyor' : 'Botlar Durdu';
