@@ -8,10 +8,6 @@ islenmis.json
 bot.pid
 bot.log
 
-# Video ciktilari
-output/
-muzik/
-
 # Python
 __pycache__/
 *.py[cod]

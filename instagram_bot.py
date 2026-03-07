@@ -2,6 +2,7 @@ import json
 import time
 import random
 import sys
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -105,6 +106,15 @@ class InstagramBot:
         try:
             self.cl.clip_upload(Path(video_yolu), caption=caption)
             log("Reels basariyla paylastirildi.")
+            
+            # Paylaşılan videoyu yerelden sil
+            try:
+                if os.path.exists(video_yolu):
+                    os.remove(video_yolu)
+                    log(f"Video paylaşıldı ve sistemden temizlendi: {Path(video_yolu).name}")
+            except Exception as e:
+                log(f"Dosya silinirken hata: {e}")
+                
             return True
         except Exception as e:
             log(f"Reels paylasim hatasi: {e}")

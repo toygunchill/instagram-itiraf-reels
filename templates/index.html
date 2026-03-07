@@ -231,6 +231,23 @@
   <!-- === Hızlı Üret === -->
   <div class="panel" id="panel-hizli">
     <div class="kutu">
+      <div class="kutu-baslik">Üretim Kontrolü</div>
+      <div class="durum-satir" style="margin-bottom: 15px;">
+        <div class="dot" id="prod-dot"></div>
+        <span class="durum-yazisi" id="prod-durum-yazisi">Boşta</span>
+        <span id="prod-ilerleme" style="font-size: 13px; color: var(--text2); margin-left: 10px;"></span>
+        
+        <div style="margin-left: auto; display: flex; gap: 8px;">
+          <button class="btn btn-kirmizi" id="btn-prod-stop" onclick="prodDurdur()" style="display:none">Durdur</button>
+          <button class="btn" id="btn-prod-reset" onclick="prodSifirla()" style="background: var(--surface2); color: var(--text2);">Sıfırla</button>
+        </div>
+      </div>
+      
+      <div class="log-header">
+        <span>Üretim Logları</span>
+      </div>
+      <div class="log-ekran" id="prod-log-ekran" style="height: 200px; margin-bottom: 20px;"></div>
+
       <div class="kutu-baslik">JSON İle Toplu Üretim</div>
       <p style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">
         Aşağıdaki alana itiraf JSON'ını yapıştırın. Videolar hemen üretilecek ve 30'ar dakika ara ile paylaşılmak üzere sıraya alınacaktır.
@@ -243,9 +260,9 @@
       "text": "Sevgilimle kavga edince..."
     }
   ]
-}' style="width: 100%; height: 300px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #aaa; font-family: monospace; padding: 12px; margin-bottom: 16px;"></textarea>
+}' style="width: 100%; height: 200px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #aaa; font-family: monospace; padding: 12px; margin-bottom: 16px;"></textarea>
       <div style="display: flex; gap: 10px;">
-        <button class="btn btn-yesil" onclick="hizliUret()">Üret ve 30dk Ara İle Paylaş</button>
+        <button class="btn btn-yesil" id="btn-prod-baslat" onclick="hizliUret()">Üretimi Başlat</button>
         <button class="btn" style="background: var(--surface2); color: var(--text2);" onclick="jsonOrnek()">Örnek Format</button>
       </div>
     </div>
@@ -280,6 +297,7 @@
   let tumVideolar = [];
   let aktifFiltre = 'hepsi';
   let logTimer = null;
+  let prodTimer = null;
   let sonLogSatir = 0;
 
   // ---- Sekmeler ----
@@ -288,11 +306,17 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('aktif'));
     document.getElementById('panel-' + id).classList.add('aktif');
     el.classList.add('aktif');
+    
+    // Temizle
+    clearInterval(logTimer);
+    clearInterval(prodTimer);
+
     if (id === 'bot') {
       logTimer = setInterval(logGuncelle, 3000);
       logGuncelle();
-    } else {
-      clearInterval(logTimer);
+    } else if (id === 'hizli') {
+      prodTimer = setInterval(prodDurumKontrol, 2000);
+      prodDurumKontrol();
     }
   }
 
@@ -378,14 +402,55 @@
       if (r.ok) {
         toast(res.mesaj);
         document.getElementById('json-input').value = '';
-        sekme('videolar', document.querySelectorAll('.tab')[0]);
-        setTimeout(videoYukle, 1000);
+        prodDurumKontrol();
       } else {
         toast(`Hata: ${res.detail}`, 'hata');
       }
     } catch (e) {
       toast('JSON formatı geçersiz!', 'hata');
     }
+  }
+
+  async function prodDurumKontrol() {
+    try {
+      const r = await fetch('/api/production/status');
+      const d = await r.json();
+      
+      const aktif = d.status === 'running';
+      document.getElementById('prod-dot').className = 'dot' + (aktif ? ' aktif' : '');
+      
+      let durumMetni = 'Boşta';
+      if (d.status === 'running') durumMetni = 'Üretiliyor...';
+      else if (d.status === 'stopped') durumMetni = 'Durduruldu';
+      else if (d.status === 'completed') durumMetni = 'Tamamlandı';
+      
+      document.getElementById('prod-durum-yazisi').textContent = durumMetni;
+      document.getElementById('prod-ilerleme').textContent = `İlerleme: ${d.progress} | Başarısız: ${d.failed}`;
+      
+      document.getElementById('btn-prod-stop').style.display = aktif ? '' : 'none';
+      document.getElementById('btn-prod-baslat').disabled = aktif;
+      
+      // Loglar
+      const ekran = document.getElementById('prod-log-ekran');
+      if (ekran) {
+        const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
+        ekran.innerHTML = (d.logs || []).map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
+        if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
+      }
+    } catch (_) {}
+  }
+
+  async function prodDurdur() {
+    if (!confirm("Üretimi durdurmak istiyor musunuz?")) return;
+    await fetch('/api/production/stop', { method: 'POST' });
+    toast('Durdurma komutu gönderildi');
+  }
+
+  async function prodSifirla() {
+    if (!confirm("Tüm üretim verilerini ve logları sıfırlamak istiyor musunuz?")) return;
+    await fetch('/api/production/reset', { method: 'POST' });
+    toast('Üretim sıfırlandı');
+    prodDurumKontrol();
   }
 
   function jsonOrnek() {

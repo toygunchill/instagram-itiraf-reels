@@ -3,7 +3,11 @@
     "allow": [
       "Bash(git -C /Users/toyguncil/Desktop/instagramproject rev-parse --is-inside-work-tree 2>/dev/null || echo \"git repo yok\")",
       "Bash(git -C /Users/toyguncil/Desktop/instagramproject remote -v; git -C /Users/toyguncil/Desktop/instagramproject log --oneline -5)",
-      "Bash(which gh && gh auth status 2>&1 | head -5)"
+      "Bash(which gh && gh auth status 2>&1 | head -5)",
+      "Bash(git branch -m master main && gh repo create instagram-itiraf-reels --public --source=. --remote=origin --push 2>&1)",
+      "Bash(pip install -r requirements.txt 2>&1 | tail -20)",
+      "Bash(pip install anthropic 2>&1 | tail -5)",
+      "Bash(python -c \"import fastapi, uvicorn, jinja2, anthropic, instagrapi, moviepy, PIL; print\\('Tum kutuphaneler OK'\\)\")"
     ]
   }
 }

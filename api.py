@@ -15,6 +15,7 @@ from config import BASE_DIR, OUTPUT_DIR, IG_USERNAME, IG_PASSWORD, PAGE_NAME, an
 import video_manager
 from claude_processor import ClaudeProcessor
 from video_generator import VideoGenerator
+from production_manager import production_manager
 
 BOT_LOG_FILE = BASE_DIR / "bot.log"
 BOT_PID_FILE = BASE_DIR / "bot.pid"
@@ -54,53 +55,31 @@ async def generate_from_json(request: Request, background_tasks: BackgroundTasks
     if not confessions:
         raise HTTPException(status_code=400, detail="Itiraf listesi bos")
 
-    # Arka planda uretim baslat (API'nin donmesini beklememek icin)
-    # Ancak user "hepsini direkt uretip bekle" dedi, 
-    # yani hepsini hemen uretecegiz. 
-    # Toplu uretim zaman alacagi icin background_tasks kullanmak daha iyi.
+    success = production_manager.start_production(
+        confessions, claude, video_gen, video_manager, OUTPUT_DIR, anonim_kullanici_adi, tema_donustur
+    )
     
-    background_tasks.add_task(toplu_uretim, confessions)
-    
-    return {"status": "ok", "mesaj": f"{len(confessions)} itiraf uretim sirasina alindi. 30dk ara ile paylasilacak."}
+    if not success:
+        raise HTTPException(status_code=400, detail="Zaten devam eden bir uretim var.")
+
+    return {"status": "ok", "mesaj": f"{len(confessions)} itiraf uretim sirasina alindi."}
 
 
-def toplu_uretim(confessions: list):
-    start_time = datetime.now()
-    
-    for i, item in enumerate(confessions):
-        try:
-            raw_text = item.get("text", "")
-            persona = item.get("persona", anonim_kullanici_adi())
-            theme = item.get("theme", "genel")
-            
-            if not raw_text:
-                continue
+@app.get("/api/production/status")
+async def production_status():
+    return production_manager.get_status()
 
-            # Claude ile duzenle
-            itiraf = claude.duzenle(raw_text)
-            kategori = tema_donustur(theme)
-            caption = claude.caption_uret(itiraf, kategori)
-            
-            video_id = f"json_{int(datetime.now().timestamp())}_{i}"
-            video_adi = f"{video_id}.mp4"
-            video_yolu = str(OUTPUT_DIR / video_adi)
-            
-            # 30'ar dakika ara ile planla
-            plan_zamani = (start_time + timedelta(minutes=30 * i)).isoformat()
-            
-            video_gen.video_olustur(itiraf, persona, kategori, video_yolu)
-            
-            video_manager.video_ekle(
-                video_id=video_id,
-                dosya=video_adi,
-                itiraf=itiraf,
-                kategori=kategori,
-                caption=caption,
-                gonderen=persona,
-                planlanan_paylasim=plan_zamani
-            )
-        except Exception as e:
-            print(f"Toplu uretim hatasi ({i}): {e}")
+
+@app.post("/api/production/stop")
+async def production_stop():
+    production_manager.stop_production()
+    return {"status": "ok"}
+
+
+@app.post("/api/production/reset")
+async def production_reset():
+    production_manager.reset_production()
+    return {"status": "ok"}
 
 
 @app.post("/api/paylas/{video_id}")

@@ -1,123 +1,65 @@
-# Instagram Itiraf Reels Otomasyonu
+# Instagram İtiraf Reels Otomasyonu 🚀
 
-Python tabanlı Instagram itiraf reels otomasyonu. DM tasarımlı video üretimi, Claude API entegrasyonu ve instagrapi ile tam otomasyon sunar.
+Bu proje, itirafları otomatik olarak görselleştirip Instagram Reels olarak paylaşan bir otomasyon sistemidir. Web paneli üzerinden JSON yükleyerek toplu üretim yapabilir veya botu çalıştırarak gelen DM'leri otomatik videoya dönüştürebilirsiniz.
 
-## Kurulum
+## ✨ Özellikler
+- **Web Panel:** Videoları yönetin, botu başlatın/durdurun ve canlı logları izleyin.
+- **Hızlı Üretim (JSON):** Toplu itiraf verilerini yükleyin, videolar hemen üretilsin ve 30'ar dakika ara ile paylaşılsın.
+- **DM Botu:** Gelen itiraf mesajlarını (`itiraf:` ile başlayan) otomatik olarak videoya dönüştürür.
+- **Otomatik Silme:** Paylaşılan videolar depolama alanı kazanmak için hem yerelden hem de sistemden otomatik temizlenir.
+- **Akıllı İşleme:** Claude API ile metin düzeltme, kategori belirleme ve etkileşimli caption üretimi.
 
-### 1. Bağımlılıkları yükle
+## 🛠 Kurulum
 
+1. **Depoyu Klonlayın:**
+   ```bash
+   git clone <repo-url>
+   cd instagram-itiraf-reels
+   ```
+
+2. **Gerekli Kütüphaneleri Yükleyin:**
+   *(Python 3.10+ önerilir)*
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **FFmpeg Kurulumu:**
+   Video işlemleri için sisteminizde FFmpeg yüklü olmalıdır.
+   - **macOS:** `brew install ffmpeg`
+   - **Windows:** [ffmpeg.org](https://ffmpeg.org/download.html) üzerinden indirip PATH'e ekleyin.
+   - **Linux:** `sudo apt install ffmpeg`
+
+4. **Yapılandırma (.env):**
+   Kök dizinde `.env` dosyası oluşturun ve bilgilerinizi girin:
+   ```env
+   IG_USERNAME=email@example.com
+   IG_PASSWORD=sifreniz
+   PAGE_NAME=itiraf.sayfasi
+   ANTHROPIC_API_KEY=sk-ant-... (Opsiyonel: Claude kullanmak istemiyorsanız boş bırakın)
+   ```
+
+## 🚀 Çalıştırma
+
+### Web Panelini Başlatın:
 ```bash
-pip install -r requirements.txt
+python api.py
 ```
+Ardından tarayıcınızda `http://localhost:8000` adresine gidin.
 
-### 2. Ortam değişkenlerini ayarla
-
-```bash
-cp .env.example .env
-```
-
-`.env` dosyasını düzenle:
-
-```
-IG_USERNAME=instagram_kullanici_adin
-IG_PASSWORD=instagram_sifren
-PAGE_NAME=itiraf.sayfasi
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-### 3. Müzik ekle (opsiyonel)
-
-`muzik/` klasörüne `.mp3` dosyaları ekle. Kategoriye göre alt klasörler oluşturabilirsin:
-
-```
-muzik/
-├── iliski/     -> ilişki kategorisi müzikleri
-├── aile/       -> aile kategorisi müzikleri
-├── is/         -> iş kategorisi müzikleri
-├── arkadaslik/ -> arkadaşlık kategorisi müzikleri
-└── genel/      -> genel müzikler
-```
-
-Alt klasör yoksa `muzik/` kökündeki tüm `.mp3` dosyalarından rastgele seçilir.
-
----
-
-## Kullanım
-
-### JSON'dan toplu video üretimi
-
-```bash
-python main.py --json data.json --page itiraf.sayfasi
-```
-
-`data.json` formatı:
-
-```json
-[
-  {
-    "itiraf": "İtiraf metni buraya"
-  },
-  {
-    "itiraf": "Başka bir itiraf",
-    "kategori": "iliski"
-  }
-]
-```
-
-Kategoriler: `iliski`, `aile`, `is`, `arkadaslik`, `genel`
-
-`kategori` alanı boş veya eksikse Claude otomatik belirler.
-
-Çıktılar `output/` klasörüne kaydedilir:
-- `itiraf_001.mp4` — video
-- `itiraf_001_caption.txt` — Instagram caption
-
-### DM otomasyon modu
-
+### Botu Başlatın:
+Panel üzerinden **"DM Botu"** sekmesine gelip **"Botu Başlat"** butonuna basmanız yeterlidir. Alternatif olarak terminalden:
 ```bash
 python main.py --bot
 ```
 
-Bot şunları yapar:
-1. Instagram'a giriş yapar (session kaydeder, bir kez login gerekir)
-2. DM'leri tarar, `itiraf: ...` formatındaki mesajları yakalar
-3. Her itiraf için: Claude düzenleme → kategori → video üret → Reels paylaş → teşekkür DM
-4. Paylaşımlar arası 120-300 saniye rastgele bekler
+## 📁 Dosya Yapısı
+- `api.py`: FastAPI backend ve Web Panel sunucusu.
+- `instagram_bot.py`: Instagram etkileşim ve paylaşım motoru.
+- `video_generator.py`: Görsel ve video üretim mantığı.
+- `production_manager.py`: Toplu üretim ve log yönetimi.
+- `muzik/`: Kategori bazlı müziklerin bulunduğu klasör.
+- `output/`: Üretilen videoların geçici olarak tutulduğu yer.
 
----
-
-## Proje Yapısı
-
-```
-instagramproject/
-├── config.py           # Ayarlar ve sabitler
-├── claude_processor.py # Claude API entegrasyonu
-├── video_generator.py  # Video üretici
-├── instagram_bot.py    # DM okuma + Reels paylaşma
-├── main.py             # CLI giriş noktası
-├── requirements.txt
-├── data.json           # Örnek JSON
-├── .env.example        # Ortam değişkenleri şablonu
-├── muzik/              # .mp3 dosyaları
-└── output/             # Üretilen videolar ve caption'lar
-```
-
----
-
-## Gereksinimler
-
-- Python 3.10+
-- `Pillow` — frame oluşturma
-- `moviepy` — video birleştirme
-- `anthropic` — Claude API
-- `instagrapi` — Instagram DM ve Reels
-- `python-dotenv` — `.env` desteği
-
----
-
-## Notlar
-
-- İlk bot çalıştırmasında Instagram login gerekir, sonrası session ile devam eder.
-- `session.json` ve `islenmis.json` dosyaları otomatik oluşturulur.
-- Bot durumu `Ctrl+C` ile durdurulabilir.
-- Instagram 2FA aktifse instagrapi bunu destekler, otomatik sorulur.
+## ⚠️ Önemli Notlar
+- Instagram hesabınızda **İki Faktörlü Doğrulama (2FA)** varsa, bot giriş yaparken sorun yaşayabilir. Uygulama şifresi kullanmanız veya 2FA'yı geçici olarak kapatmanız önerilir.
+- Videolar paylaşıldıktan sonra otomatik olarak silinir.
