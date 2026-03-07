@@ -75,7 +75,8 @@ class ProductionManager:
 
     def _run_loop(self, claude, video_gen, video_manager, output_dir, anon_func, tema_func):
         self.log(f"Toplu üretim başlatıldı. Toplam: {self.total_count}")
-        start_time = datetime.now()
+        # Planlama başlangıç zamanı
+        current_time = datetime.now()
 
         for i, item in enumerate(self.queue):
             if self._stop_event.is_set():
@@ -92,6 +93,21 @@ class ProductionManager:
 
                 self.log(f"[{i+1}/{self.total_count}] İşleniyor: {raw_text[:30]}...")
                 
+                # Paylaşım Aralığı: 1 saat (3600 sn) ile 1.5 saat (5400 sn) arası rastgele ekle
+                if i > 0: # İlk video hemen veya kısa bir süre sonra olabilir, diğerleri aralıklı
+                    interval = random.randint(3600, 5400)
+                    current_time += timedelta(seconds=interval)
+                
+                # Gece Koruması: 02:00 - 07:00 arasını kontrol et
+                # Eğer current_time bu aralıktaysa, sabah 07:00'ye taşı
+                if 2 <= current_time.hour < 7:
+                    self.log(f"  - Gece koruması: {current_time.strftime('%H:%M')} saati sabah 07:00 sonrasına erteleniyor.")
+                    # Günü aynı tutup saati 07:00 + rastgele dakika yapalım
+                    current_time = current_time.replace(hour=7, minute=random.randint(0, 30), second=0)
+                    # Eğer çoktan ertesi güne geçtiysek veya saat zaten ilerlediyse ona göre ayarlanır
+                
+                plan_zamani = current_time.isoformat()
+                
                 # Claude ile duzenle
                 itiraf = claude.duzenle(raw_text)
                 kategori = tema_func(theme)
@@ -100,11 +116,6 @@ class ProductionManager:
                 video_id = f"json_{int(datetime.now().timestamp())}_{i}"
                 video_adi = f"{video_id}.mp4"
                 video_yolu = str(output_dir / video_adi)
-                
-                # 30'ar dakika ara ile planla + rastgele sapma (-5 ile +5 dk arası)
-                jitter = random.randint(-300, 300) # saniye cinsinden
-                base_delay = 1800 * i # 30 dk * i
-                plan_zamani = (start_time + timedelta(seconds=base_delay + jitter)).isoformat()
                 
                 self.log(f"  - Video üretiliyor ({kategori})...")
                 video_gen.video_olustur(itiraf, persona, kategori, video_yolu)
@@ -121,7 +132,7 @@ class ProductionManager:
                 
                 with self._lock:
                     self.processed_count += 1
-                self.log(f"  - Tamamlandı. Planlanan: {plan_zamani}")
+                self.log(f"  - Tamamlandı. Planlanan: {current_time.strftime('%d/%m %H:%M')}")
 
             except Exception as e:
                 with self._lock:
