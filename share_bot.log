@@ -1,0 +1,15 @@
+[01:44:02] Bot güvenli modda başlatıldı (Mod: share)
+[01:44:02] Instagram'a güvenli giriş yapılıyor...
+Traceback (most recent call last):
+  File "/Users/toyguncil/Desktop/instagramproject/main.py", line 132, in <module>
+    main()
+  File "/Users/toyguncil/Desktop/instagramproject/main.py", line 121, in main
+    bot_modu(mode="share")
+  File "/Users/toyguncil/Desktop/instagramproject/main.py", line 97, in bot_modu
+    bot.calistir(mode=mode)
+  File "/Users/toyguncil/Desktop/instagramproject/instagram_bot.py", line 272, in calistir
+    self.giris_yap()
+  File "/Users/toyguncil/Desktop/instagramproject/instagram_bot.py", line 99, in giris_yap
+    self.cl.set_device_make("Samsung")
+    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Client' object has no attribute 'set_device_make'

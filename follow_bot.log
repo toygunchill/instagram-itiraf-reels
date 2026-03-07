@@ -77,3 +77,18 @@ Generating thumbnail "/Users/toyguncil/Desktop/instagramproject/output/json_1772
 [01:32:44] Bot hazir, dongu basliyor.
 [01:32:54] 'icimizden_gelenler1453' takipçileri taranıyor...
 [01:34:07] HATA: Instagram hız sınırı koydu. 20 dakika dinleniliyor...
+[01:44:03] Bot güvenli modda başlatıldı (Mod: follow)
+[01:44:03] Instagram'a güvenli giriş yapılıyor...
+Traceback (most recent call last):
+  File "/Users/toyguncil/Desktop/instagramproject/main.py", line 132, in <module>
+    main()
+  File "/Users/toyguncil/Desktop/instagramproject/main.py", line 123, in main
+    bot_modu(mode="follow", follow_target=args.follow_bot)
+  File "/Users/toyguncil/Desktop/instagramproject/main.py", line 97, in bot_modu
+    bot.calistir(mode=mode)
+  File "/Users/toyguncil/Desktop/instagramproject/instagram_bot.py", line 272, in calistir
+    self.giris_yap()
+  File "/Users/toyguncil/Desktop/instagramproject/instagram_bot.py", line 99, in giris_yap
+    self.cl.set_device_make("Samsung")
+    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Client' object has no attribute 'set_device_make'

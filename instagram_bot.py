@@ -95,10 +95,8 @@ class InstagramBot:
 
     def giris_yap(self):
         log("Instagram'a güvenli giriş yapılıyor...")
-        # Rastgele cihaz simülasyonu için user-agent ayarı
-        self.cl.set_device_make("Samsung")
-        self.cl.set_device_model("Galaxy S21")
         
+        # Cihaz ayarlarını kütüphanenin varsayılan güvenli yöntemleriyle yapıyoruz
         if SESSION_FILE.exists():
             try:
                 self.cl.load_settings(str(SESSION_FILE))
@@ -106,11 +104,15 @@ class InstagramBot:
                 log("Mevcut oturumla devam ediliyor.")
                 return
             except:
-                log("Oturum yenileniyor...")
+                log("Oturum geçersiz, yeniden giriş yapılıyor...")
 
-        self.cl.login(IG_USERNAME, IG_PASSWORD)
-        self.cl.dump_settings(str(SESSION_FILE))
-        log("Yeni oturum açıldı ve kaydedildi.")
+        try:
+            self.cl.login(IG_USERNAME, IG_PASSWORD)
+            self.cl.dump_settings(str(SESSION_FILE))
+            log("Yeni oturum açıldı ve kaydedildi.")
+        except Exception as e:
+            log(f"Giriş hatası: {e}")
+            raise
 
     # ---- Görevler ----
 
