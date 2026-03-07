@@ -89,10 +89,14 @@ class InstagramBot:
             json.dump(self.followed_users, f, ensure_ascii=False, indent=2)
 
     def hedef_takipcilerini_cek(self, hedef_kullanici_adi: str):
+        if self.follow_queue:
+            return
+            
         log(f"'{hedef_kullanici_adi}' takipçileri taranıyor...")
         try:
             user_id = self.cl.user_id_from_username(hedef_kullanici_adi)
             followers = self.cl.user_followers(user_id, amount=100)
+            log(f"Hedef sayfada {len(followers)} takipçi bulundu.")
             
             yeni_takip_sayisi = 0
             for f_id, f_info in followers.items():
@@ -100,7 +104,10 @@ class InstagramBot:
                     self.follow_queue.append(f_id)
                     yeni_takip_sayisi += 1
             
-            log(f"Kuyruğa {yeni_takip_sayisi} yeni kullanıcı eklendi.")
+            log(f"Kuyruğa {yeni_takip_sayisi} yeni kullanıcı eklendi. (Toplam Kuyruk: {len(self.follow_queue)})")
+            
+            if yeni_takip_sayisi == 0:
+                log("Uyarı: Hiç yeni kullanıcı bulunamadı, tümü zaten takip edilmiş veya işlem görmüş.")
         except Exception as e:
             log(f"Takipçi çekme hatası: {e}")
 
