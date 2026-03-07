@@ -138,9 +138,14 @@ async def bot_status():
 
 
 @app.post("/api/bot/start")
-async def bot_baslat():
+async def bot_baslat(target: str = None):
     if _bot_calisiyor():
         return {"status": "zaten_calisiyor"}
+
+    # Set follow target environment variable if provided
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    if target:
+        env["FOLLOW_TARGET"] = target
 
     log_f = open(BOT_LOG_FILE, "a", encoding="utf-8")
     proc = subprocess.Popen(
@@ -148,7 +153,7 @@ async def bot_baslat():
         stdout=log_f,
         stderr=log_f,
         cwd=str(BASE_DIR),
-        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        env=env,
     )
     BOT_PID_FILE.write_text(str(proc.pid))
     return {"status": "baslatildi", "pid": proc.pid}
@@ -175,6 +180,23 @@ async def bot_logs(satirlar: int = 150):
     with open(BOT_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()[-satirlar:]
     return {"satirlar": [l.rstrip() for l in lines]}
+
+
+@app.get("/api/follow/stats")
+async def follow_stats():
+    from config import FOLLOWED_USERS_FILE
+    if not FOLLOWED_USERS_FILE.exists():
+        return {"followed": 0, "unfollowed": 0}
+    
+    try:
+        with open(FOLLOWED_USERS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        followed = sum(1 for x in data.values() if x["status"] == "followed")
+        unfollowed = sum(1 for x in data.values() if x["status"] == "unfollowed")
+        return {"followed": followed, "unfollowed": unfollowed}
+    except:
+        return {"followed": 0, "unfollowed": 0}
 
 
 if __name__ == "__main__":

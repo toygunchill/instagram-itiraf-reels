@@ -17,6 +17,7 @@ MUZIK_DIR = BASE_DIR / "muzik"
 OUTPUT_DIR = BASE_DIR / "output"
 SESSION_FILE = BASE_DIR / "session.json"
 ISLENMIS_FILE = BASE_DIR / "islenmis.json"
+FOLLOWED_USERS_FILE = BASE_DIR / "followed_users.json"
 
 OUTPUT_DIR.mkdir(exist_ok=True)
 MUZIK_DIR.mkdir(exist_ok=True)

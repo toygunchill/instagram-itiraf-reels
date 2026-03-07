@@ -11,7 +11,7 @@ from instagrapi.exceptions import LoginRequired
 
 from config import (
     IG_USERNAME, IG_PASSWORD, PAGE_NAME,
-    SESSION_FILE, ISLENMIS_FILE, OUTPUT_DIR, anonim_kullanici_adi,
+    SESSION_FILE, ISLENMIS_FILE, FOLLOWED_USERS_FILE, OUTPUT_DIR, anonim_kullanici_adi,
 )
 from claude_processor import ClaudeProcessor
 from video_generator import VideoGenerator
@@ -31,6 +31,11 @@ class InstagramBot:
         self.claude = ClaudeProcessor()
         self.video_gen = VideoGenerator(sayfa_adi=PAGE_NAME)
         self.islenmis: set[str] = self._islenmis_yukle()
+        self.followed_users = self._followed_yukle()
+        self.follow_target = "" # Takip edilecek hedef sayfa
+        self.follow_queue = [] # Takip edileceklerin listesi (ID'ler)
+        self.last_follow_time = datetime.min
+        self.last_unfollow_time = datetime.min
 
     # ---- Session ----
 
@@ -67,6 +72,90 @@ class InstagramBot:
     def _islenmis_kaydet(self):
         with open(ISLENMIS_FILE, "w", encoding="utf-8") as f:
             json.dump(list(self.islenmis), f, ensure_ascii=False, indent=2)
+
+    # ---- Follower Automation ----
+
+    def _followed_yukle(self) -> dict:
+        if FOLLOWED_USERS_FILE.exists():
+            try:
+                with open(FOLLOWED_USERS_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def _followed_kaydet(self):
+        with open(FOLLOWED_USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.followed_users, f, ensure_ascii=False, indent=2)
+
+    def hedef_takipcilerini_cek(self, hedef_kullanici_adi: str):
+        log(f"'{hedef_kullanici_adi}' takipçileri taranıyor...")
+        try:
+            user_id = self.cl.user_id_from_username(hedef_kullanici_adi)
+            followers = self.cl.user_followers(user_id, amount=100)
+            
+            yeni_takip_sayisi = 0
+            for f_id, f_info in followers.items():
+                if str(f_id) not in self.followed_users and str(f_id) != str(self.cl.user_id):
+                    self.follow_queue.append(f_id)
+                    yeni_takip_sayisi += 1
+            
+            log(f"Kuyruğa {yeni_takip_sayisi} yeni kullanıcı eklendi.")
+        except Exception as e:
+            log(f"Takipçi çekme hatası: {e}")
+
+    def otomasyon_takip_et(self):
+        # 5 dakikada bir (300 sn)
+        if (datetime.now() - self.last_follow_time).total_seconds() < 300:
+            return
+
+        if not self.follow_queue:
+            if self.follow_target:
+                self.hedef_takipcilerini_cek(self.follow_target)
+            return
+
+        user_id = str(self.follow_queue.pop(0))
+        try:
+            log(f"Kullanıcı takip ediliyor (ID: {user_id})...")
+            self.cl.user_follow(user_id)
+            self.followed_users[user_id] = {
+                "followed_at": datetime.now().isoformat(),
+                "status": "followed"
+            }
+            self._followed_kaydet()
+            self.last_follow_time = datetime.now()
+            log("Takip başarılı.")
+        except Exception as e:
+            log(f"Takip hatası (ID: {user_id}): {e}")
+
+    def otomasyon_takipten_cik(self):
+        simdi = datetime.now()
+        unfollow_bekleyenler = []
+
+        for u_id, info in self.followed_users.items():
+            if info.get("status") == "followed":
+                f_time = datetime.fromisoformat(info["followed_at"])
+                if (simdi - f_time).total_seconds() >= 24 * 3600: # 24 saat
+                    unfollow_bekleyenler.append(u_id)
+
+        if not unfollow_bekleyenler:
+            return
+
+        # 2.5 dakikada bir (150 sn)
+        if (simdi - self.last_unfollow_time).total_seconds() < 150:
+            return
+
+        user_id = unfollow_bekleyenler[0]
+        try:
+            log(f"Takipten çıkılıyor (ID: {user_id})...")
+            self.cl.user_unfollow(user_id)
+            self.followed_users[user_id]["status"] = "unfollowed"
+            self.followed_users[user_id]["unfollowed_at"] = simdi.isoformat()
+            self._followed_kaydet()
+            self.last_unfollow_time = simdi
+            log("Takipten çıkış başarılı.")
+        except Exception as e:
+            log(f"Takipten çıkış hatası (ID: {user_id}): {e}")
 
     # ---- DM tarama ----
 
@@ -181,15 +270,17 @@ class InstagramBot:
         log("Bot hazir, dongu basliyor.")
 
         while True:
-            # Once planlilari kontrol et
+            # Planlı Reels paylaşımlarını kontrol et
             self.planli_paylasim_kontrol()
+            
+            # Takip otomasyonu
+            self.otomasyon_takip_et()
+            self.otomasyon_takipten_cik()
 
             itiraflar = self.dm_tara()
 
             if not itiraflar:
-                bekleme = random.randint(120, 300)
-                log(f"Yeni itiraf yok. {bekleme} saniye bekleniyor...")
-                time.sleep(bekleme)
+                time.sleep(30)
                 continue
 
             for kayit in itiraflar:
@@ -238,14 +329,12 @@ class InstagramBot:
                             self.tesekkur_dm_at(user_id)
 
                     self.islenmis.add(mesaj_id)
-                    self._islenmis_kaydet()
+                    self._islenmis_yukle()
                     log("Itiraf tamamlandi.")
 
                 except Exception as e:
                     log(f"HATA: {e}")
                     self.islenmis.add(mesaj_id)
-                    self._islenmis_kaydet()
+                    self._islenmis_yukle()
 
-                bekleme = random.randint(120, 300)
-                log(f"Sonraki itiraf icin {bekleme} saniye bekleniyor...")
-                time.sleep(bekleme)
+                time.sleep(10)

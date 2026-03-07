@@ -83,6 +83,7 @@ def json_modu(json_dosyasi: str, sayfa_adi: str):
 
 def bot_modu():
     """Instagram DM otomasyon modu."""
+    import os
     from config import IG_USERNAME, IG_PASSWORD
     if not IG_USERNAME or not IG_PASSWORD:
         print("Hata: IG_USERNAME veya IG_PASSWORD tanimli degil. .env dosyasini kontrol edin.")
@@ -92,6 +93,13 @@ def bot_modu():
 
     from instagram_bot import InstagramBot
     bot = InstagramBot()
+    
+    # Get follow target from environment
+    follow_target = os.getenv("FOLLOW_TARGET", "")
+    if follow_target:
+        bot.follow_target = follow_target
+        print(f"Takip otomasyonu hedefi: {follow_target}")
+    
     bot.calistir()
 
 

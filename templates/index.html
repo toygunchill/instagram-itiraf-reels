@@ -271,12 +271,30 @@
   <!-- === Bot === -->
   <div class="panel" id="panel-bot">
     <div class="kutu">
-      <div class="kutu-baslik">Bot Durumu</div>
+      <div class="kutu-baslik">Bot Ayarları & Durumu</div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 8px;">Takip Otomasyonu Hedef Kullanıcı (Opsiyonel)</label>
+        <input type="text" id="follow-target" placeholder="Örn: rakip_sayfa" style="width: 100%; max-width: 300px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
+        <p style="font-size: 11px; color: #555; margin-top: 6px;">Hedef sayfanın takipçilerine 5dk'da bir istek atılır, 24 saat sonra takipten çıkılır.</p>
+      </div>
+
       <div class="durum-satir">
         <div class="dot" id="bot-dot"></div>
         <span class="durum-yazisi" id="bot-durum-yazisi">Kontrol ediliyor...</span>
         <button class="btn btn-yesil" id="btn-baslat" onclick="botBaslat()">Botu Baslat</button>
         <button class="btn btn-kirmizi" id="btn-durdur" onclick="botDurdur()" style="display:none">Durdur</button>
+      </div>
+
+      <div style="display: flex; gap: 20px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+        <div>
+          <span style="font-size: 12px; color: var(--text2);">Takip Edilen:</span>
+          <span id="stat-followed" style="font-size: 16px; font-weight: 600; color: var(--accent); margin-left: 5px;">0</span>
+        </div>
+        <div>
+          <span style="font-size: 12px; color: var(--text2);">Takipten Çıkılan:</span>
+          <span id="stat-unfollowed" style="font-size: 16px; font-weight: 600; color: var(--success); margin-left: 5px;">0</span>
+        </div>
       </div>
     </div>
 
@@ -523,18 +541,29 @@
       document.getElementById('header-durum').textContent =
         aktif ? 'Bot calisiyor' : 'Bot durdu';
       document.getElementById('bot-durum-yazisi').textContent =
-        aktif ? 'Bot aktif — DM\'ler taraniyor' : 'Bot durdu';
+        aktif ? 'Bot aktif — DM & Takip otomasyonu' : 'Bot durdu';
 
       document.getElementById('btn-baslat').style.display = aktif ? 'none' : '';
       document.getElementById('btn-durdur').style.display = aktif ? '' : 'none';
+      document.getElementById('follow-target').disabled = aktif;
+
+      // Stats
+      const rs = await fetch('/api/follow/stats');
+      const ds = await rs.json();
+      document.getElementById('stat-followed').textContent = ds.followed || 0;
+      document.getElementById('stat-unfollowed').textContent = ds.unfollowed || 0;
     } catch (_) {}
   }
 
   async function botBaslat() {
     const btn = document.getElementById('btn-baslat');
+    const target = document.getElementById('follow-target').value;
     btn.disabled = true;
     try {
-      await fetch('/api/bot/start', { method: 'POST' });
+      let url = '/api/bot/start';
+      if (target) url += `?target=${encodeURIComponent(target)}`;
+      
+      await fetch(url, { method: 'POST' });
       toast('Bot baslatildi');
       setTimeout(botDurumKontrol, 1000);
     } catch (e) { toast(`Hata: ${e.message}`, 'hata'); }
