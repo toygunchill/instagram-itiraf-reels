@@ -101,8 +101,10 @@ class ProductionManager:
                 video_adi = f"{video_id}.mp4"
                 video_yolu = str(output_dir / video_adi)
                 
-                # 30'ar dakika ara ile planla
-                plan_zamani = (start_time + timedelta(minutes=30 * i)).isoformat()
+                # 30'ar dakika ara ile planla + rastgele sapma (-5 ile +5 dk arası)
+                jitter = random.randint(-300, 300) # saniye cinsinden
+                base_delay = 1800 * i # 30 dk * i
+                plan_zamani = (start_time + timedelta(seconds=base_delay + jitter)).isoformat()
                 
                 self.log(f"  - Video üretiliyor ({kategori})...")
                 video_gen.video_olustur(itiraf, persona, kategori, video_yolu)
