@@ -210,7 +210,8 @@
 <div class="tabs">
   <div class="tab aktif" onclick="sekme('videolar', this)">Videolar <span id="video-sayac"></span></div>
   <div class="tab" onclick="sekme('hizli', this)">Hızlı Üret (JSON)</div>
-  <div class="tab" onclick="sekme('bot', this)">Takip & Otomasyon Botu</div>
+  <div class="tab" onclick="sekme('bot-dm', this)">DM Botu</div>
+  <div class="tab" onclick="sekme('bot-follow', this)">Takip Botu</div>
 </div>
 
 <main>
@@ -252,15 +253,7 @@
       <p style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">
         Aşağıdaki alana itiraf JSON'ını yapıştırın. Videolar hemen üretilecek ve 30'ar dakika ara ile paylaşılmak üzere sıraya alınacaktır.
       </p>
-      <textarea id="json-input" placeholder='{
-  "confessions": [
-    {
-      "persona": "23 yaşında...",
-      "theme": "ilişki",
-      "text": "Sevgilimle kavga edince..."
-    }
-  ]
-}' style="width: 100%; height: 200px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #aaa; font-family: monospace; padding: 12px; margin-bottom: 16px;"></textarea>
+      <textarea id="json-input" placeholder='JSON yapıştırın...' style="width: 100%; height: 200px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #aaa; font-family: monospace; padding: 12px; margin-bottom: 16px;"></textarea>
       <div style="display: flex; gap: 10px;">
         <button class="btn btn-yesil" id="btn-prod-baslat" onclick="hizliUret()">Üretimi Başlat</button>
         <button class="btn" style="background: var(--surface2); color: var(--text2);" onclick="jsonOrnek()">Örnek Format</button>
@@ -268,22 +261,42 @@
     </div>
   </div>
 
-  <!-- === Bot === -->
-  <div class="panel" id="panel-bot">
+  <!-- === DM Bot === -->
+  <div class="panel" id="panel-bot-dm">
     <div class="kutu">
-      <div class="kutu-baslik">Takip Otomasyonu & DM Ayarları</div>
+      <div class="kutu-baslik">DM Botu Kontrolü</div>
+      <div class="durum-satir">
+        <div class="dot" id="dm-bot-dot"></div>
+        <span class="durum-yazisi" id="dm-bot-durum-yazisi">Kontrol ediliyor...</span>
+        <button class="btn btn-yesil" id="btn-dm-start" onclick="botStart('dm')">Botu Başlat</button>
+        <button class="btn btn-kirmizi" id="btn-dm-stop" onclick="botStop('dm')" style="display:none">Durdur</button>
+      </div>
+    </div>
+
+    <div class="kutu">
+      <div class="log-header">
+        <span>DM Botu Logları</span>
+        <button class="log-temizle" onclick="logTemizle('dm')">Temizle</button>
+      </div>
+      <div class="log-ekran" id="dm-log-ekran"></div>
+    </div>
+  </div>
+
+  <!-- === Follow Bot === -->
+  <div class="panel" id="panel-bot-follow">
+    <div class="kutu">
+      <div class="kutu-baslik">Takip Botu Kontrolü</div>
       
       <div style="margin-bottom: 20px;">
-        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 8px;">Takip Otomasyonu Hedef Kullanıcı (Opsiyonel)</label>
+        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 8px;">Hedef Kullanıcı</label>
         <input type="text" id="follow-target" placeholder="Örn: rakip_sayfa" style="width: 100%; max-width: 300px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
-        <p style="font-size: 11px; color: #555; margin-top: 6px;">Hedef sayfanın takipçilerine 5dk'da bir istek atılır, 24 saat sonra takipten çıkılır.</p>
       </div>
 
       <div class="durum-satir">
-        <div class="dot" id="bot-dot"></div>
-        <span class="durum-yazisi" id="bot-durum-yazisi">Kontrol ediliyor...</span>
-        <button class="btn btn-yesil" id="btn-baslat" onclick="botBaslat()">Botu Baslat</button>
-        <button class="btn btn-kirmizi" id="btn-durdur" onclick="botDurdur()" style="display:none">Durdur</button>
+        <div class="dot" id="follow-bot-dot"></div>
+        <span class="durum-yazisi" id="follow-bot-durum-yazisi">Kontrol ediliyor...</span>
+        <button class="btn btn-yesil" id="btn-follow-start" onclick="botStart('follow')">Botu Başlat</button>
+        <button class="btn btn-kirmizi" id="btn-follow-stop" onclick="botStop('follow')" style="display:none">Durdur</button>
       </div>
 
       <div style="display: flex; gap: 20px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
@@ -300,10 +313,10 @@
 
     <div class="kutu">
       <div class="log-header">
-        <span>Canli Loglar</span>
-        <button class="log-temizle" onclick="logTemizle()">Temizle</button>
+        <span>Takip Botu Logları</span>
+        <button class="log-temizle" onclick="logTemizle('follow')">Temizle</button>
       </div>
-      <div class="log-ekran" id="log-ekran"></div>
+      <div class="log-ekran" id="follow-log-ekran"></div>
     </div>
   </div>
 
@@ -316,7 +329,7 @@
   let aktifFiltre = 'hepsi';
   let logTimer = null;
   let prodTimer = null;
-  let sonLogSatir = 0;
+  let sonLogs = { dm: 0, follow: 0 };
 
   // ---- Sekmeler ----
   function sekme(id, el) {
@@ -325,13 +338,13 @@
     document.getElementById('panel-' + id).classList.add('aktif');
     el.classList.add('aktif');
     
-    // Temizle
     clearInterval(logTimer);
     clearInterval(prodTimer);
 
-    if (id === 'bot') {
-      logTimer = setInterval(logGuncelle, 3000);
-      logGuncelle();
+    if (id === 'bot-dm' || id === 'bot-follow') {
+      const mode = id === 'bot-dm' ? 'dm' : 'follow';
+      logTimer = setInterval(() => logGuncelle(mode), 3000);
+      logGuncelle(mode);
     } else if (id === 'hizli') {
       prodTimer = setInterval(prodDurumKontrol, 2000);
       prodDurumKontrol();
@@ -346,7 +359,7 @@
     setTimeout(() => el.className = 'toast', 3500);
   }
 
-  // ---- Filtre ----
+  // ---- Filtre & Video ----
   function filtre(deger, el) {
     aktifFiltre = deger;
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('aktif'));
@@ -360,136 +373,30 @@
     if (aktifFiltre !== 'hepsi') {
       liste = tumVideolar.filter(v => v.durum === aktifFiltre);
     }
-
-    document.getElementById('toolbar-bilgi').textContent =
-      `${liste.length} video`;
-
-    if (!liste.length) {
-      grid.innerHTML = `<div class="bos-mesaj">
-        Gosterilecek video yok.
-        <code>python main.py --json data.json --page sayfaadi</code>
-      </div>`;
-      return;
-    }
+    document.getElementById('toolbar-bilgi').textContent = `${liste.length} video`;
 
     grid.innerHTML = liste.map(v => {
       const paylasıldi = v.durum === 'paylasıldı';
       const planli = v.planlanan_paylasim && !paylasıldi;
-      const planliZamani = planli ? new Date(v.planlanan_paylasim).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : null;
+      const planliZamani = planli ? new Date(v.planlanan_paylasim).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
       
       return `
-        <div class="video-kart" id="kart-${v.id}">
-          <video controls preload="metadata">
-            <source src="/output/${v.dosya}" type="video/mp4">
-          </video>
+        <div class="video-kart">
+          <video controls preload="metadata"><source src="/output/${v.dosya}" type="video/mp4"></video>
           <div class="kart-body">
             <div class="kart-meta">
               <span class="badge">${v.kategori}</span>
-              <span class="badge badge-durum ${paylasıldi ? 'badge-paylasıldı' : (planli ? 'badge-bekliyor' : 'badge-bekliyor')}">
+              <span class="badge badge-durum ${paylasıldi ? 'badge-paylasıldı' : 'badge-bekliyor'}">
                 ${paylasıldi ? 'Paylasıldı' : (planli ? 'Zamanlandı: ' + planliZamani : 'Bekliyor')}
               </span>
             </div>
             <div class="itiraf-metin">${escHtml(v.itiraf)}</div>
-            <div class="caption-metin">${escHtml(v.caption)}</div>
-            <div class="gonderen">Gonderen: ${escHtml(v.gonderen)}</div>
-            <button
-              class="paylas-btn ${paylasıldi ? 'paylasıldi' : ''}"
-              onclick="paylas('${v.id}', this)"
-              ${paylasıldi ? 'disabled' : ''}
-            >${paylasıldi ? 'Paylasıldı' : "Instagram'a Paylas"}</button>
+            <button class="paylas-btn ${paylasıldi ? 'paylasıldi' : ''}" onclick="paylas('${v.id}', this)" ${paylasıldi ? 'disabled' : ''}>
+              ${paylasıldi ? 'Paylasıldı' : "Instagram'a Paylas"}
+            </button>
           </div>
         </div>`;
     }).join('');
-  }
-
-  async function hizliUret() {
-    const input = document.getElementById('json-input').value;
-    if (!input) {
-      toast('Lütfen JSON verisi girin!', 'hata');
-      return;
-    }
-
-    try {
-      const data = JSON.parse(input);
-      const r = await fetch('/api/generate_from_json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const res = await r.json();
-      if (r.ok) {
-        toast(res.mesaj);
-        document.getElementById('json-input').value = '';
-        prodDurumKontrol();
-      } else {
-        toast(`Hata: ${res.detail}`, 'hata');
-      }
-    } catch (e) {
-      toast('JSON formatı geçersiz!', 'hata');
-    }
-  }
-
-  async function prodDurumKontrol() {
-    try {
-      const r = await fetch('/api/production/status');
-      const d = await r.json();
-      
-      const aktif = d.status === 'running';
-      document.getElementById('prod-dot').className = 'dot' + (aktif ? ' aktif' : '');
-      
-      let durumMetni = 'Boşta';
-      if (d.status === 'running') durumMetni = 'Üretiliyor...';
-      else if (d.status === 'stopped') durumMetni = 'Durduruldu';
-      else if (d.status === 'completed') durumMetni = 'Tamamlandı';
-      
-      document.getElementById('prod-durum-yazisi').textContent = durumMetni;
-      document.getElementById('prod-ilerleme').textContent = `İlerleme: ${d.progress} | Başarısız: ${d.failed}`;
-      
-      document.getElementById('btn-prod-stop').style.display = aktif ? '' : 'none';
-      document.getElementById('btn-prod-baslat').disabled = aktif;
-      
-      // Loglar
-      const ekran = document.getElementById('prod-log-ekran');
-      if (ekran) {
-        const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
-        ekran.innerHTML = (d.logs || []).map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
-        if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
-      }
-    } catch (_) {}
-  }
-
-  async function prodDurdur() {
-    if (!confirm("Üretimi durdurmak istiyor musunuz?")) return;
-    await fetch('/api/production/stop', { method: 'POST' });
-    toast('Durdurma komutu gönderildi');
-  }
-
-  async function prodSifirla() {
-    if (!confirm("Tüm üretim verilerini ve logları sıfırlamak istiyor musunuz?")) return;
-    await fetch('/api/production/reset', { method: 'POST' });
-    toast('Üretim sıfırlandı');
-    prodDurumKontrol();
-  }
-
-  function jsonOrnek() {
-    const ornek = {
-      "meta": { "language": "tr", "count": 2 },
-      "confessions": [
-        {
-          "id": 1,
-          "persona": "23 yaşında market kasiyeri kadın",
-          "theme": "ilişki",
-          "text": "Sevgilimle kavga edince eski konuşmaları dönüp okuyom. Bitti diyorum ama içten içe yazsın istiyom."
-        },
-        {
-          "id": 2,
-          "persona": "31 yaşında evli erkek, servis şoförü",
-          "theme": "aldatma",
-          "text": "Eşimden gizli iş yerinden biriyle mesajlaştım. Bişey olmadı ama olsa da olurdu galiba, bundan utanıyom."
-        }
-      ]
-    };
-    document.getElementById('json-input').value = JSON.stringify(ornek, null, 2);
   }
 
   async function videoYukle() {
@@ -498,127 +405,133 @@
       tumVideolar = await r.json();
       document.getElementById('video-sayac').textContent = `(${tumVideolar.length})`;
       videolariGoster();
-    } catch (e) {
-      document.getElementById('video-grid').innerHTML =
-        `<div class="bos-mesaj">Baglanti hatasi: ${escHtml(e.message)}</div>`;
-    }
+    } catch (_) {}
   }
 
   async function paylas(videoId, btn) {
-    if (!confirm("Bu videoyu Instagram'da paylasmak istediginize emin misiniz?")) return;
-    btn.disabled = true;
-    btn.textContent = 'Paylasiliyor...';
+    if (!confirm("Paylasmak istiyor musunuz?")) return;
+    btn.disabled = true; btn.textContent = 'Paylasiliyor...';
     try {
       const r = await fetch(`/api/paylas/${videoId}`, { method: 'POST' });
-      const data = await r.json();
-      if (r.ok) {
-        toast('Video basariyla paylasıldı!');
-        setTimeout(videoYukle, 600);
-      } else {
-        toast(`Hata: ${data.detail}`, 'hata');
-        btn.disabled = false;
-        btn.textContent = "Instagram'a Paylas";
-      }
-    } catch (e) {
-      toast(`Hata: ${e.message}`, 'hata');
-      btn.disabled = false;
-      btn.textContent = "Instagram'a Paylas";
-    }
+      if (r.ok) { toast('Basarili!'); videoYukle(); }
+      else { toast('Hata!', 'hata'); btn.disabled = false; }
+    } catch (e) { toast(e.message, 'hata'); btn.disabled = false; }
   }
 
-  // ---- Bot ----
+  // ---- Bot Islemleri ----
   async function botDurumKontrol() {
+    // DM Bot
     try {
-      const r = await fetch('/api/bot/status');
-      const d = await r.json();
-      const aktif = d.calisiyor;
+      const r_dm = await fetch('/api/dm_bot/status');
+      const d_dm = await r_dm.json();
+      const dm_aktif = d_dm.calisiyor;
+      document.getElementById('dm-bot-dot').className = 'dot' + (dm_aktif ? ' aktif' : '');
+      document.getElementById('dm-bot-durum-yazisi').textContent = dm_aktif ? 'Aktif' : 'Durdu';
+      document.getElementById('btn-dm-start').style.display = dm_aktif ? 'none' : '';
+      document.getElementById('btn-dm-stop').style.display = dm_aktif ? '' : 'none';
+    } catch (_) {}
 
-      ['header-dot', 'bot-dot'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.className = 'dot' + (aktif ? ' aktif' : '');
-      });
+    // Follow Bot
+    try {
+      const r_f = await fetch('/api/follow_bot/status');
+      const d_f = await r_f.json();
+      const f_aktif = d_f.calisiyor;
+      document.getElementById('follow-bot-dot').className = 'dot' + (f_aktif ? ' aktif' : '');
+      document.getElementById('follow-bot-durum-yazisi').textContent = f_aktif ? 'Aktif' : 'Durdu';
+      document.getElementById('btn-follow-start').style.display = f_aktif ? 'none' : '';
+      document.getElementById('btn-follow-stop').style.display = f_aktif ? '' : 'none';
+      document.getElementById('follow-target').disabled = f_aktif;
 
-      document.getElementById('header-durum').textContent =
-        aktif ? 'Bot calisiyor' : 'Bot durdu';
-      document.getElementById('bot-durum-yazisi').textContent =
-        aktif ? 'Bot aktif — DM & Takip otomasyonu' : 'Bot durdu';
-
-      document.getElementById('btn-baslat').style.display = aktif ? 'none' : '';
-      document.getElementById('btn-durdur').style.display = aktif ? '' : 'none';
-      document.getElementById('follow-target').disabled = aktif;
-
-      // Stats
       const rs = await fetch('/api/follow/stats');
       const ds = await rs.json();
       document.getElementById('stat-followed').textContent = ds.followed || 0;
       document.getElementById('stat-unfollowed').textContent = ds.unfollowed || 0;
     } catch (_) {}
+
+    const headerAktif = document.getElementById('dm-bot-dot').classList.contains('aktif') || 
+                        document.getElementById('follow-bot-dot').classList.contains('aktif');
+    document.getElementById('header-dot').className = 'dot' + (headerAktif ? ' aktif' : '');
+    document.getElementById('header-durum').textContent = headerAktif ? 'Botlar Çalışıyor' : 'Botlar Durdu';
   }
 
-  async function botBaslat() {
-    const btn = document.getElementById('btn-baslat');
-    const target = document.getElementById('follow-target').value;
-    btn.disabled = true;
+  async function botStart(mode) {
+    const target = mode === 'follow' ? document.getElementById('follow-target').value : '';
+    if (mode === 'follow' && !target) { toast('Hedef kullanıcı girin!', 'hata'); return; }
+    
     try {
-      let url = '/api/bot/start';
-      if (target) url += `?target=${encodeURIComponent(target)}`;
-      
+      let url = `/api/${mode}_bot/start`;
+      if (mode === 'follow') url += `?target=${encodeURIComponent(target)}`;
       await fetch(url, { method: 'POST' });
       toast('Bot baslatildi');
       setTimeout(botDurumKontrol, 1000);
-    } catch (e) { toast(`Hata: ${e.message}`, 'hata'); }
-    btn.disabled = false;
+    } catch (e) { toast(e.message, 'hata'); }
   }
 
-  async function botDurdur() {
-    const btn = document.getElementById('btn-durdur');
-    btn.disabled = true;
+  async function botStop(mode) {
     try {
-      await fetch('/api/bot/stop', { method: 'POST' });
+      await fetch(`/api/${mode}_bot/stop`, { method: 'POST' });
       toast('Bot durduruldu');
       setTimeout(botDurumKontrol, 1000);
-    } catch (e) { toast(`Hata: ${e.message}`, 'hata'); }
-    btn.disabled = false;
+    } catch (e) { toast(e.message, 'hata'); }
   }
 
-  async function logGuncelle() {
+  async function logGuncelle(mode) {
     try {
-      const r = await fetch('/api/bot/logs?satirlar=150');
+      const r = await fetch(`/api/${mode}_bot/logs?satirlar=150`);
       const d = await r.json();
-      const ekran = document.getElementById('log-ekran');
+      const ekran = document.getElementById(`${mode}-log-ekran`);
       const satirlar = d.satirlar || [];
 
-      if (satirlar.length === sonLogSatir) return;
-      sonLogSatir = satirlar.length;
+      if (satirlar.length === sonLogs[mode]) return;
+      sonLogs[mode] = satirlar.length;
 
       const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
-      ekran.innerHTML = satirlar.map(s => {
-        const cls = s.toLowerCase().includes('hata') ? 'hata'
-                  : s.toLowerCase().includes('tamamlandi') || s.toLowerCase().includes('basarili') ? 'basari'
-                  : '';
-        return `<p class="log-satir ${cls}">${escHtml(s)}</p>`;
-      }).join('');
-
+      ekran.innerHTML = satirlar.map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
       if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
     } catch (_) {}
   }
 
-  function logTemizle() {
-    document.getElementById('log-ekran').innerHTML = '';
-    sonLogSatir = 0;
+  function logTemizle(mode) {
+    document.getElementById(`${mode}-log-ekran`).innerHTML = '';
+    sonLogs[mode] = 0;
   }
 
-  function escHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  // ---- Uretim Islemleri ----
+  async function prodDurumKontrol() {
+    try {
+      const r = await fetch('/api/production/status');
+      const d = await r.json();
+      const aktif = d.status === 'running';
+      document.getElementById('prod-dot').className = 'dot' + (aktif ? ' aktif' : '');
+      document.getElementById('prod-durum-yazisi').textContent = aktif ? 'Üretiliyor' : 'Boşta';
+      document.getElementById('prod-ilerleme').textContent = `${d.progress} | Hata: ${d.failed}`;
+      document.getElementById('btn-prod-stop').style.display = aktif ? '' : 'none';
+      document.getElementById('btn-prod-baslat').disabled = aktif;
+      
+      const ekran = document.getElementById('prod-log-ekran');
+      ekran.innerHTML = (d.logs || []).map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
+    } catch (_) {}
   }
 
-  // ---- Baslangic ----
+  async function hizliUret() {
+    const input = document.getElementById('json-input').value;
+    try {
+      const data = JSON.parse(input);
+      const r = await fetch('/api/generate_from_json', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (r.ok) { toast('Uretim basladi'); document.getElementById('json-input').value = ''; }
+      else { toast('Hata!', 'hata'); }
+    } catch (_) { toast('Gecersiz JSON', 'hata'); }
+  }
+
+  function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // Başlangıç
   videoYukle();
   botDurumKontrol();
-  setInterval(botDurumKontrol, 10000);
-  setInterval(videoYukle, 30000);
+  setInterval(botDurumKontrol, 5000);
 </script>
 </body>
 </html>

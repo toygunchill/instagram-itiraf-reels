@@ -81,49 +81,45 @@ def json_modu(json_dosyasi: str, sayfa_adi: str):
     print("Tum itiraflar islendi.")
 
 
-def bot_modu():
-    """Instagram DM otomasyon modu."""
-    import os
+def bot_modu(mode="all", follow_target=None):
+    """Instagram otomasyon modu (DM veya Follow)."""
     from config import IG_USERNAME, IG_PASSWORD
     if not IG_USERNAME or not IG_PASSWORD:
         print("Hata: IG_USERNAME veya IG_PASSWORD tanimli degil. .env dosyasini kontrol edin.")
         sys.exit(1)
-    if not ANTHROPIC_API_KEY:
-        print("Bilgi: ANTHROPIC_API_KEY tanimli degil, Claude olmadan calisiliyor.")
-
+    
     from instagram_bot import InstagramBot
     bot = InstagramBot()
     
-    # Get follow target from environment
-    follow_target = os.getenv("FOLLOW_TARGET", "")
     if follow_target:
         bot.follow_target = follow_target
-        print(f"Takip otomasyonu hedefi: {follow_target}")
-    
-    bot.calistir()
+
+    bot.calistir(mode=mode)
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Instagram Itiraf Reels Otomasyonu",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Kullanim ornekleri:
-  python main.py --json data.json --page itiraf.sayfasi
-  python main.py --bot
-  python api.py   (web panelini baslat)
-        """,
     )
     parser.add_argument("--json", metavar="DOSYA", help="JSON dosyasindan toplu video uret")
     parser.add_argument("--page", metavar="SAYFA", default=PAGE_NAME, help="Instagram sayfa adi")
-    parser.add_argument("--bot", action="store_true", help="DM otomasyon modunu baslat")
+    
+    # Yeni bot modları
+    parser.add_argument("--bot", action="store_true", help="Tum bot fonksiyonlarini baslat")
+    parser.add_argument("--dm-bot", action="store_true", help="Sadece DM botunu baslat")
+    parser.add_argument("--follow-bot", metavar="TARGET", help="Sadece Takip botunu baslat (Hedef kullanıcı)")
 
     args = parser.parse_args()
 
     if args.json:
         json_modu(args.json, args.page)
+    elif args.dm_bot:
+        bot_modu(mode="dm")
+    elif args.follow_bot:
+        bot_modu(mode="follow", follow_target=args.follow_bot)
     elif args.bot:
-        bot_modu()
+        bot_modu(mode="all")
     else:
         parser.print_help()
         sys.exit(1)

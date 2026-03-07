@@ -260,9 +260,9 @@ class InstagramBot:
 
     # ---- Ana dongu ----
 
-    def calistir(self):
+    def calistir(self, mode="all"):
         log("=" * 50)
-        log("Bot baslatiliyor...")
+        log(f"Bot baslatiliyor (Mod: {mode})...")
         log(f"Sayfa: {PAGE_NAME} | Hesap: {IG_USERNAME}")
         log("=" * 50)
 
@@ -270,71 +270,74 @@ class InstagramBot:
         log("Bot hazir, dongu basliyor.")
 
         while True:
-            # Planlı Reels paylaşımlarını kontrol et
+            # Planlı Reels paylaşımlarını kontrol et (Her iki modda da çalışsın)
             self.planli_paylasim_kontrol()
             
-            # Takip otomasyonu
-            self.otomasyon_takip_et()
-            self.otomasyon_takipten_cik()
+            # Takip otomasyonu (Sadece 'follow' veya 'all' modunda)
+            if mode in ["follow", "all"]:
+                self.otomasyon_takip_et()
+                self.otomasyon_takipten_cik()
 
-            itiraflar = self.dm_tara()
+            # DM tarama (Sadece 'dm' veya 'all' modunda)
+            if mode in ["dm", "all"]:
+                itiraflar = self.dm_tara()
 
-            if not itiraflar:
-                time.sleep(30)
-                continue
+                if itiraflar:
+                    for kayit in itiraflar:
+                        mesaj_id = kayit["mesaj_id"]
+                        user_id = kayit["user_id"]
+                        ham_itiraf = kayit["itiraf"]
 
-            for kayit in itiraflar:
-                mesaj_id = kayit["mesaj_id"]
-                user_id = kayit["user_id"]
-                ham_itiraf = kayit["itiraf"]
+                        log("-" * 40)
+                        log(f"Itiraf isleniyor: {ham_itiraf[:80]}...")
 
-                log("-" * 40)
-                log(f"Itiraf isleniyor: {ham_itiraf[:80]}...")
+                        try:
+                            log("Claude: metin duzeltiliyor...")
+                            itiraf = self.claude.duzenle(ham_itiraf)
+                            log(f"Duzeltildi: {itiraf[:80]}...")
 
-                try:
-                    log("Claude: metin duzeltiliyor...")
-                    itiraf = self.claude.duzenle(ham_itiraf)
-                    log(f"Duzeltildi: {itiraf[:80]}...")
+                            log("Claude: kategori belirleniyor...")
+                            kategori = self.claude.kategori_belirle(itiraf)
+                            log(f"Kategori: {kategori}")
 
-                    log("Claude: kategori belirleniyor...")
-                    kategori = self.claude.kategori_belirle(itiraf)
-                    log(f"Kategori: {kategori}")
+                            log("Claude: caption uretiliyor...")
+                            caption = self.claude.caption_uret(itiraf, kategori)
+                            log(f"Caption: {caption[:60]}...")
 
-                    log("Claude: caption uretiliyor...")
-                    caption = self.claude.caption_uret(itiraf, kategori)
-                    log(f"Caption: {caption[:60]}...")
+                            gonderen = anonim_kullanici_adi()
+                            log(f"Anonim gonderen: {gonderen}")
 
-                    gonderen = anonim_kullanici_adi()
-                    log(f"Anonim gonderen: {gonderen}")
+                            video_id = f"dm_{mesaj_id}"
+                            video_adi = f"{video_id}.mp4"
+                            video_yolu = str(OUTPUT_DIR / video_adi)
+                            log(f"Video uretiliyor: {video_adi}")
+                            self.video_gen.video_olustur(itiraf, gonderen, kategori, video_yolu)
+                            log("Video uretildi.")
 
-                    video_id = f"dm_{mesaj_id}"
-                    video_adi = f"{video_id}.mp4"
-                    video_yolu = str(OUTPUT_DIR / video_adi)
-                    log(f"Video uretiliyor: {video_adi}")
-                    self.video_gen.video_olustur(itiraf, gonderen, kategori, video_yolu)
-                    log("Video uretildi.")
+                            video_manager.video_ekle(
+                                video_id=video_id,
+                                dosya=video_adi,
+                                itiraf=itiraf,
+                                kategori=kategori,
+                                caption=caption,
+                                gonderen=gonderen,
+                            )
 
-                    video_manager.video_ekle(
-                        video_id=video_id,
-                        dosya=video_adi,
-                        itiraf=itiraf,
-                        kategori=kategori,
-                        caption=caption,
-                        gonderen=gonderen,
-                    )
+                            if self.reels_paylas(video_yolu, caption):
+                                video_manager.video_durum_guncelle(video_id, "paylasıldı")
+                                if user_id:
+                                    self.tesekkur_dm_at(user_id)
 
-                    if self.reels_paylas(video_yolu, caption):
-                        video_manager.video_durum_guncelle(video_id, "paylasıldı")
-                        if user_id:
-                            self.tesekkur_dm_at(user_id)
+                            self.islenmis.add(mesaj_id)
+                            self._islenmis_kaydet()
+                            log("Itiraf tamamlandi.")
 
-                    self.islenmis.add(mesaj_id)
-                    self._islenmis_yukle()
-                    log("Itiraf tamamlandi.")
+                        except Exception as e:
+                            log(f"HATA: {e}")
+                            self.islenmis.add(mesaj_id)
+                            self._islenmis_yukle()
 
-                except Exception as e:
-                    log(f"HATA: {e}")
-                    self.islenmis.add(mesaj_id)
-                    self._islenmis_yukle()
+                        time.sleep(10)
 
-                time.sleep(10)
+            # Döngü bekleme süresi
+            time.sleep(30)

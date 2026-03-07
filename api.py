@@ -17,8 +17,11 @@ from claude_processor import ClaudeProcessor
 from video_generator import VideoGenerator
 from production_manager import production_manager
 
-BOT_LOG_FILE = BASE_DIR / "bot.log"
-BOT_PID_FILE = BASE_DIR / "bot.pid"
+# Log ve PID dosyalarını ayırıyoruz
+DM_LOG_FILE = BASE_DIR / "dm_bot.log"
+DM_PID_FILE = BASE_DIR / "dm_bot.pid"
+FOLLOW_LOG_FILE = BASE_DIR / "follow_bot.log"
+FOLLOW_PID_FILE = BASE_DIR / "follow_bot.pid"
 
 app = FastAPI(title="Itiraf Reels Paneli")
 app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
@@ -118,80 +121,109 @@ async def paylas(video_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ---- Bot API ----
+# ---- Bot API Yardimcilari ----
 
-def _bot_calisiyor() -> bool:
-    if not BOT_PID_FILE.exists():
+def _bot_calisiyor(pid_file: Path) -> bool:
+    if not pid_file.exists():
         return False
     try:
-        pid = int(BOT_PID_FILE.read_text().strip())
+        pid = int(pid_file.read_text().strip())
         os.kill(pid, 0)
         return True
     except (ProcessLookupError, ValueError, OSError):
-        BOT_PID_FILE.unlink(missing_ok=True)
+        pid_file.unlink(missing_ok=True)
         return False
 
-
-@app.get("/api/bot/status")
-async def bot_status():
-    return {"calisiyor": _bot_calisiyor()}
-
-
-@app.post("/api/bot/start")
-async def bot_baslat(target: str = None):
-    if _bot_calisiyor():
-        return {"status": "zaten_calisiyor"}
-
-    # Set follow target environment variable if provided
-    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
-    if target:
-        env["FOLLOW_TARGET"] = target
-
-    log_f = open(BOT_LOG_FILE, "a", encoding="utf-8")
-    proc = subprocess.Popen(
-        [sys.executable, "-u", str(BASE_DIR / "main.py"), "--bot"],
-        stdout=log_f,
-        stderr=log_f,
-        cwd=str(BASE_DIR),
-        env=env,
-    )
-    BOT_PID_FILE.write_text(str(proc.pid))
-    return {"status": "baslatildi", "pid": proc.pid}
-
-
-@app.post("/api/bot/stop")
-async def bot_durdur():
-    if not _bot_calisiyor():
-        return {"status": "zaten_durdu"}
-
-    pid = int(BOT_PID_FILE.read_text().strip())
+def _bot_durdur(pid_file: Path):
+    if not _bot_calisiyor(pid_file):
+        return False
+    pid = int(pid_file.read_text().strip())
     try:
         os.kill(pid, signal.SIGTERM)
+        pid_file.unlink(missing_ok=True)
+        return True
     except ProcessLookupError:
-        pass
-    BOT_PID_FILE.unlink(missing_ok=True)
-    return {"status": "durduruldu"}
+        pid_file.unlink(missing_ok=True)
+        return True
 
+# ---- DM Bot API ----
 
-@app.get("/api/bot/logs")
-async def bot_logs(satirlar: int = 150):
-    if not BOT_LOG_FILE.exists():
-        return {"satirlar": []}
-    with open(BOT_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+@app.get("/api/dm_bot/status")
+async def dm_bot_status():
+    return {"calisiyor": _bot_calisiyor(DM_PID_FILE)}
+
+@app.post("/api/dm_bot/start")
+async def dm_bot_start():
+    if _bot_calisiyor(DM_PID_FILE):
+        return {"status": "zaten_calisiyor"}
+    
+    log_f = open(DM_LOG_FILE, "a", encoding="utf-8")
+    proc = subprocess.Popen(
+        [sys.executable, "-u", str(BASE_DIR / "main.py"), "--dm-bot"],
+        stdout=log_f, stderr=log_f, cwd=str(BASE_DIR),
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
+    DM_PID_FILE.write_text(str(proc.pid))
+    return {"status": "baslatildi", "pid": proc.pid}
+
+@app.post("/api/dm_bot/stop")
+async def dm_bot_stop():
+    if _bot_durdur(DM_PID_FILE):
+        return {"status": "durduruldu"}
+    return {"status": "zaten_durdu"}
+
+@app.get("/api/dm_bot/logs")
+async def dm_bot_logs(satirlar: int = 150):
+    if not DM_LOG_FILE.exists(): return {"satirlar": []}
+    with open(DM_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()[-satirlar:]
     return {"satirlar": [l.rstrip() for l in lines]}
 
+# ---- Follow Bot API ----
+
+@app.get("/api/follow_bot/status")
+async def follow_bot_status():
+    return {"calisiyor": _bot_calisiyor(FOLLOW_PID_FILE)}
+
+@app.post("/api/follow_bot/start")
+async def follow_bot_start(target: str):
+    if not target:
+        raise HTTPException(status_code=400, detail="Hedef kullanıcı belirtilmedi")
+    if _bot_calisiyor(FOLLOW_PID_FILE):
+        return {"status": "zaten_calisiyor"}
+    
+    log_f = open(FOLLOW_LOG_FILE, "a", encoding="utf-8")
+    proc = subprocess.Popen(
+        [sys.executable, "-u", str(BASE_DIR / "main.py"), "--follow-bot", target],
+        stdout=log_f, stderr=log_f, cwd=str(BASE_DIR),
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
+    FOLLOW_PID_FILE.write_text(str(proc.pid))
+    return {"status": "baslatildi", "pid": proc.pid}
+
+@app.post("/api/follow_bot/stop")
+async def follow_bot_stop():
+    if _bot_durdur(FOLLOW_PID_FILE):
+        return {"status": "durduruldu"}
+    return {"status": "zaten_durdu"}
+
+@app.get("/api/follow_bot/logs")
+async def follow_bot_logs(satirlar: int = 150):
+    if not FOLLOW_LOG_FILE.exists(): return {"satirlar": []}
+    with open(FOLLOW_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+        lines = f.readlines()[-satirlar:]
+    return {"satirlar": [l.rstrip() for l in lines]}
+
+# ---- Ortak Stats ----
 
 @app.get("/api/follow/stats")
 async def follow_stats():
     from config import FOLLOWED_USERS_FILE
     if not FOLLOWED_USERS_FILE.exists():
         return {"followed": 0, "unfollowed": 0}
-    
     try:
         with open(FOLLOWED_USERS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
         followed = sum(1 for x in data.values() if x["status"] == "followed")
         unfollowed = sum(1 for x in data.values() if x["status"] == "unfollowed")
         return {"followed": followed, "unfollowed": unfollowed}
