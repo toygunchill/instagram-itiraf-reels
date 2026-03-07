@@ -27,16 +27,23 @@ def log(mesaj: str):
 class InstagramBot:
     def __init__(self):
         self.cl = Client()
-        self.cl.delay_range = [2, 5]
+        # Instagram'ın botu yakalamaması için bekleme sürelerini (saniye) artırdık ve rastgele yaptık
+        self.cl.delay_range = [4, 9] 
         self.claude = ClaudeProcessor()
         self.video_gen = VideoGenerator(sayfa_adi=PAGE_NAME)
         self.islenmis: set[str] = self._islenmis_yukle()
         self.followed_users = self._followed_yukle()
         self.follow_target = "" # Takip edilecek hedef sayfa
         self.follow_queue = [] # Takip edileceklerin listesi (ID'ler)
+        
         self.last_follow_time = datetime.min
         self.last_unfollow_time = datetime.min
         self.last_fetch_time = datetime.min
+        
+        # Dinamik bekleme süreleri (Her işlemden sonra yeniden hesaplanır)
+        self.next_follow_delay = random.randint(400, 700) # 6 - 11 dakika arası
+        self.next_unfollow_delay = random.randint(200, 400) # 3 - 6 dakika arası
+        self.last_human_action = datetime.now()
 
     # ---- Session ----
 
@@ -131,8 +138,7 @@ class InstagramBot:
                 log(f"Takipçi çekme hatası: {e}")
 
     def otomasyon_takip_et(self):
-        # 5 dakikada bir (300 sn)
-        if (datetime.now() - self.last_follow_time).total_seconds() < 300:
+        if (datetime.now() - self.last_follow_time).total_seconds() < self.next_follow_delay:
             return
 
         if not self.follow_queue:
@@ -150,7 +156,8 @@ class InstagramBot:
             }
             self._followed_kaydet()
             self.last_follow_time = datetime.now()
-            log("Takip başarılı.")
+            self.next_follow_delay = random.randint(400, 700) # Yeni işlem için süreyi rastgele belirle
+            log(f"Takip başarılı. Bir sonraki takip en erken {self.next_follow_delay} sn sonra.")
         except Exception as e:
             log(f"Takip hatası (ID: {user_id}): {e}")
 
@@ -167,8 +174,7 @@ class InstagramBot:
         if not unfollow_bekleyenler:
             return
 
-        # 2.5 dakikada bir (150 sn)
-        if (simdi - self.last_unfollow_time).total_seconds() < 150:
+        if (simdi - self.last_unfollow_time).total_seconds() < self.next_unfollow_delay:
             return
 
         user_id = unfollow_bekleyenler[0]
@@ -179,9 +185,34 @@ class InstagramBot:
             self.followed_users[user_id]["unfollowed_at"] = simdi.isoformat()
             self._followed_kaydet()
             self.last_unfollow_time = simdi
-            log("Takipten çıkış başarılı.")
+            self.next_unfollow_delay = random.randint(200, 400) # Yeni işlem için süreyi rastgele belirle
+            log(f"Takipten çıkış başarılı. Bir sonraki çıkış en erken {self.next_unfollow_delay} sn sonra.")
         except Exception as e:
             log(f"Takipten çıkış hatası (ID: {user_id}): {e}")
+
+    # ---- Anti-Bot & İnsani Simülasyon ----
+
+    def uyku_kontrolu(self):
+        """Gece saatlerinde botu dinlenmeye alarak insansı bir profil çizer."""
+        saat = datetime.now().hour
+        # Gece 02:00 ile 07:00 arası işlem yapma (5 saat dinlenme)
+        if 2 <= saat < 7:
+            log("Gece uykusu vakti. Bot 07:00'ye kadar işlem yapmayacak.")
+            time.sleep(3600) # 1 saat uyu ve tekrar kontrol et
+            return True
+        return False
+
+    def insani_davranis_simule_et(self):
+        """Instagram'a sadece bot scripti gibi görünmemek için arada anasayfa kaydırma simülasyonu yapar."""
+        if (datetime.now() - self.last_human_action).total_seconds() > random.randint(1800, 3600):
+            log("İnsani davranış simüle ediliyor: Anasayfa güncelleniyor...")
+            try:
+                self.cl.get_timeline_feed()
+                time.sleep(random.uniform(2.0, 5.0))
+            except:
+                pass
+            finally:
+                self.last_human_action = datetime.now()
 
     # ---- DM tarama ----
 
@@ -309,6 +340,13 @@ class InstagramBot:
         log("Bot hazir, dongu basliyor.")
 
         while True:
+            # Gece uykusu kontrolü
+            if self.uyku_kontrolu():
+                continue
+
+            # Arada bir anasayfa kaydırıp insan taklidi yap
+            self.insani_davranis_simule_et()
+
             # Hesap istatistiklerini güncelle
             self.hesap_istatistiklerini_guncelle()
 
@@ -373,6 +411,8 @@ class InstagramBot:
                             self.islenmis.add(mesaj_id)
                             self._islenmis_kaydet()
 
-                        time.sleep(10)
+                        time.sleep(random.randint(10, 25))
 
-            time.sleep(30)
+            # Döngü bekleme süresi - Her seferinde farklı süre bekle ki bot olduğu anlaşılmasın
+            bekleme_suresi = random.randint(30, 90)
+            time.sleep(bekleme_suresi)
