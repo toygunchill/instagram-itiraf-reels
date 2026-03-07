@@ -3,7 +3,7 @@ import time
 import random
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from instagrapi import Client
@@ -36,6 +36,7 @@ class InstagramBot:
         self.follow_queue = [] # Takip edileceklerin listesi (ID'ler)
         self.last_follow_time = datetime.min
         self.last_unfollow_time = datetime.min
+        self.last_fetch_time = datetime.min
 
     # ---- Session ----
 
@@ -92,7 +93,13 @@ class InstagramBot:
         if self.follow_queue:
             return
             
+        # Son çekme denemesinden sonra en az 15 dakika geçmeli
+        if (datetime.now() - self.last_fetch_time).total_seconds() < 900:
+            return
+
         log(f"'{hedef_kullanici_adi}' takipçileri taranıyor...")
+        self.last_fetch_time = datetime.now()
+
         try:
             user_id = self.cl.user_id_from_username(hedef_kullanici_adi)
             followers = self.cl.user_followers(user_id, amount=100)
@@ -107,9 +114,17 @@ class InstagramBot:
             log(f"Kuyruğa {yeni_takip_sayisi} yeni kullanıcı eklendi. (Toplam Kuyruk: {len(self.follow_queue)})")
             
             if yeni_takip_sayisi == 0:
-                log("Uyarı: Hiç yeni kullanıcı bulunamadı, tümü zaten takip edilmiş veya işlem görmüş.")
+                log("Uyarı: Hiç yeni kullanıcı bulunamadı, tümü zaten takip edilmiş.")
+                # Liste bossa bekleme suresini ileri at (1 saat bekle)
+                self.last_fetch_time = datetime.now() + timedelta(hours=1)
+                
         except Exception as e:
-            log(f"Takipçi çekme hatası: {e}")
+            error_msg = str(e).lower()
+            if "wait" in error_msg or "429" in error_msg:
+                log("HATA: Instagram hız sınırı koydu. 20 dakika dinleniliyor...")
+                self.last_fetch_time = datetime.now() + timedelta(minutes=20)
+            else:
+                log(f"Takipçi çekme hatası: {e}")
 
     def otomasyon_takip_et(self):
         # 5 dakikada bir (300 sn)
@@ -278,7 +293,6 @@ class InstagramBot:
 
         while True:
             # 1. Planlı Paylaşımlar (Sadece 'dm' veya 'all' modunda)
-            # Bu sayede takip botu reels paylasimi ile ugrasmaz.
             if mode in ["dm", "all"]:
                 self.planli_paylasim_kontrol()
 
@@ -325,7 +339,6 @@ class InstagramBot:
                                 gonderen=gonderen,
                             )
 
-                            # Hemen paylas
                             if self.reels_paylas(video_yolu, caption):
                                 video_manager.video_durum_guncelle(video_id, "paylasıldı")
                                 if user_id:
@@ -333,7 +346,7 @@ class InstagramBot:
 
                             self.islenmis.add(mesaj_id)
                             self._islenmis_kaydet()
-                            log("DM itirafı tamamlandi ve paylasıldı.")
+                            log("DM itirafı tamamlandi.")
 
                         except Exception as e:
                             log(f"DM isleme hatası: {e}")
@@ -342,5 +355,4 @@ class InstagramBot:
 
                         time.sleep(10)
 
-            # Döngü bekleme süresi
             time.sleep(30)
