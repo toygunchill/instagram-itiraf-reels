@@ -408,9 +408,16 @@
       const planli = v.planlanan_paylasim && !paylasıldi;
       const planliZamani = planli ? new Date(v.planlanan_paylasim).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
       
+      const videoHtml = paylasıldi 
+        ? `<div style="width:100%; aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; flex-direction:column; color:#555; font-size:12px; text-align:center; padding:20px;">
+             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:10px; opacity:0.3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+             VİDEO PAYLAŞILDI<br>Dosya Sistemden Silindi
+           </div>`
+        : `<video controls preload="metadata"><source src="/output/${v.dosya}" type="video/mp4"></video>`;
+
       return `
         <div class="video-kart">
-          <video controls preload="metadata"><source src="/output/${v.dosya}" type="video/mp4"></video>
+          ${videoHtml}
           <div class="kart-body">
             <div class="kart-meta">
               <span class="badge">${v.kategori}</span>

@@ -46,7 +46,18 @@ async def index(request: Request):
 @app.get("/api/videos")
 async def list_videos():
     meta = video_manager.meta_yukle()
-    return sorted(meta.values(), key=lambda v: v.get("olusturulma", ""), reverse=True)
+    güncel_meta = {}
+    
+    # Dosya kontrolü yaparak listeyi temizle
+    for vid, data in meta.items():
+        video_yolu = OUTPUT_DIR / data["dosya"]
+        if not video_yolu.exists() and data["durum"] == "bekliyor":
+            # Eğer dosya yoksa ve hala bekliyor görünüyorsa (bot silmiş olabilir)
+            data["durum"] = "paylasıldı" # Veya 'dosya_yok'
+            video_manager.video_durum_guncelle(vid, data["durum"])
+        güncel_meta[vid] = data
+        
+    return sorted(güncel_meta.values(), key=lambda v: v.get("olusturulma", ""), reverse=True)
 
 
 @app.post("/api/generate_from_json")
