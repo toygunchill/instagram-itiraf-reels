@@ -3,6 +3,7 @@ import time
 import random
 import sys
 import os
+import signal
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -27,7 +28,6 @@ def log(mesaj: str):
 class InstagramBot:
     def __init__(self):
         self.cl = Client()
-        # İnsansı gecikmeler (Saniye)
         self.cl.delay_range = [5, 12] 
         self.claude = ClaudeProcessor()
         self.video_gen = VideoGenerator(sayfa_adi=PAGE_NAME)
@@ -42,12 +42,20 @@ class InstagramBot:
         self.last_fetch_time = datetime.min
         self.last_human_action = datetime.now()
         
-        # Günlük Sayaçlar (Limit aşımı önlemek için)
         self.daily_stats = self._stats_yukle()
+        self.next_follow_delay = random.randint(450, 900)
+        self.next_unfollow_delay = random.randint(300, 600)
         
-        # Dinamik bekleme süreleri
-        self.next_follow_delay = random.randint(450, 900) # 7 - 15 dk
-        self.next_unfollow_delay = random.randint(300, 600) # 5 - 10 dk
+        self.running = True
+        # Sinyal dinleyicileri
+        signal.signal(signal.SIGTERM, self._sinyal_yakala)
+        signal.signal(signal.SIGINT, self._sinyal_yakala)
+
+    def _sinyal_yakala(self, signum, frame):
+        log(f"Durdurma sinyali alındı. Güvenli çıkış yapılıyor...")
+        self.running = False
+        self.cikis_yap()
+        sys.exit(0)
 
     # ---- Veri Yönetimi ----
 
@@ -95,8 +103,6 @@ class InstagramBot:
 
     def giris_yap(self):
         log("Instagram'a güvenli giriş yapılıyor...")
-        
-        # Cihaz ayarlarını kütüphanenin varsayılan güvenli yöntemleriyle yapıyoruz
         if SESSION_FILE.exists():
             try:
                 self.cl.load_settings(str(SESSION_FILE))
@@ -113,6 +119,16 @@ class InstagramBot:
         except Exception as e:
             log(f"Giriş hatası: {e}")
             raise
+
+    def cikis_yap(self):
+        log("Instagram oturumu kapatılıyor...")
+        try:
+            self.cl.logout()
+            if SESSION_FILE.exists():
+                os.remove(SESSION_FILE)
+            log("Başarıyla çıkış yapıldı.")
+        except Exception as e:
+            log(f"Çıkış hatası: {e}")
 
     # ---- Görevler ----
 
@@ -132,21 +148,24 @@ class InstagramBot:
                     yeni += 1
             log(f"Kuyruğa {yeni} organik aday eklendi.")
         except Exception as e:
-            if "wait" in str(e).lower(): self.last_fetch_time = datetime.now() + timedelta(minutes=30)
-            log(f"Liste çekme hatası: {e}")
+            error_msg = str(e).lower()
+            if "wait" in error_msg or "429" in error_msg:
+                log("HATA: Instagram hız sınırı. 30 dk beklenecek.")
+                self.last_fetch_time = datetime.now() + timedelta(minutes=30)
+            elif "login_required" in error_msg:
+                self.giris_yap()
+            log(f"Liste hatası: {e}")
 
     def otomasyon_takip_et(self):
-        if self.daily_stats["follows"] >= 100: # Günlük Limit
-            return
-        if (datetime.now() - self.last_follow_time).total_seconds() < self.next_follow_delay:
-            return
+        if self.daily_stats["follows"] >= 100: return
+        if (datetime.now() - self.last_follow_time).total_seconds() < self.next_follow_delay: return
         if not self.follow_queue:
             if self.follow_target: self.hedef_takipcilerini_cek(self.follow_target)
             return
 
         user_id = str(self.follow_queue.pop(0))
         try:
-            log(f"İnsansı takip yapılıyor (ID: {user_id})...")
+            log(f"Takip ediliyor: {user_id}")
             self.cl.user_follow(user_id)
             self.followed_users[user_id] = {"followed_at": datetime.now().isoformat(), "status": "followed"}
             self._followed_kaydet()
@@ -154,51 +173,36 @@ class InstagramBot:
             self._stats_kaydet()
             self.last_follow_time = datetime.now()
             self.next_follow_delay = random.randint(450, 900)
-            log("Takip başarılı.")
-        except Exception as e:
-            log(f"Takip hatası: {e}")
+        except Exception as e: log(f"Takip hatası: {e}")
 
     def otomasyon_takipten_cik(self):
         simdi = datetime.now()
         bekleyenler = [u for u, i in self.followed_users.items() if i.get("status") == "followed" and (simdi - datetime.fromisoformat(i["followed_at"])).total_seconds() >= 24*3600]
-        if not bekleyenler or (simdi - self.last_unfollow_time).total_seconds() < self.next_unfollow_delay:
-            return
+        if not bekleyenler or (simdi - self.last_unfollow_time).total_seconds() < self.next_unfollow_delay: return
 
         user_id = bekleyenler[0]
         try:
-            log(f"Takipten çıkılıyor (Organik)...")
+            log(f"Takipten çıkılıyor: {user_id}")
             self.cl.user_unfollow(user_id)
             self.followed_users[user_id]["status"] = "unfollowed"
             self._followed_kaydet()
             self.last_unfollow_time = simdi
             self.next_unfollow_delay = random.randint(300, 600)
-        except Exception as e:
-            log(f"Takipten çıkış hatası: {e}")
-
-    # ---- İnsani Simülasyon (Anti-Bot) ----
+        except Exception as e: log(f"Çıkış hatası: {e}")
 
     def insani_davranis_simule_et(self):
-        if (datetime.now() - self.last_human_action).total_seconds() < random.randint(1200, 2400):
-            return
-        
+        if (datetime.now() - self.last_human_action).total_seconds() < random.randint(1200, 2400): return
         log("İnsani davranış simüle ediliyor...")
         try:
             aksiyon = random.choice(["timeline", "explore", "notifications"])
-            if aksiyon == "timeline":
-                self.cl.get_timeline_feed()
-                log("Anasayfa kaydırıldı.")
+            if aksiyon == "timeline": self.cl.get_timeline_feed()
             elif aksiyon == "explore":
-                medias = self.cl.explore_medias(amount=5)
-                if medias: self.cl.media_like(medias[0].id)
-                log("Keşfette gezildi ve bir gönderi beğenildi.")
-            elif aksiyon == "notifications":
-                self.cl.get_recent_activity()
-                log("Bildirimler kontrol edildi.")
-            
+                m = self.cl.explore_medias(amount=5)
+                if m: self.cl.media_like(m[0].id)
+            elif aksiyon == "notifications": self.cl.get_recent_activity()
             time.sleep(random.uniform(3, 7))
         except: pass
-        finally:
-            self.last_human_action = datetime.now()
+        finally: self.last_human_action = datetime.now()
 
     def uyku_kontrolu(self):
         saat = datetime.now().hour
@@ -215,10 +219,8 @@ class InstagramBot:
             with open(BASE_DIR / "stats.json", "w", encoding="utf-8") as f: json.dump(stats, f)
         except: pass
 
-    # ---- DM & Paylaşım ----
-
     def dm_tara(self) -> list:
-        log("Gelen kutusu kontrol ediliyor...")
+        log("Gelen kutusu taranıyor...")
         itiraflar = []
         try:
             threads = self.cl.direct_threads(amount=20)
@@ -232,43 +234,26 @@ class InstagramBot:
         return itiraflar
 
     def reels_paylas(self, video_yolu: str, caption: str) -> bool:
-        if self.daily_stats["shares"] >= 50: # Günlük Limit
-            log("GÜNLÜK PAYLAŞIM LİMİTİNE ULAŞILDI!")
-            return False
-        
-        log(f"Reels paylaşılıyor (İnsansı hız)...")
+        if self.daily_stats["shares"] >= 50: return False
+        log(f"Reels paylaşılıyor...")
         try:
-            # Paylaşım öncesi kısa bir insansı bekleme
             time.sleep(random.randint(5, 15))
-            
-            result = self.cl.clip_upload(Path(video_yolu), caption=caption)
+            self.cl.clip_upload(Path(video_yolu), caption=caption)
             log("Paylaşım başarılı.")
-            self._paylasim_sonrasi_islemler(video_yolu)
-            return True
-            
-        except Exception as e:
-            err_str = str(e)
-            # Kritik Düzeltme: Eğer hata mesajı 'ok' içeriyorsa aslında paylaşılmıştır
-            if '"status": "ok"' in err_str.lower() or "'status': 'ok'" in err_str.lower():
-                log("Bilgi: Bilinmeyen bir hata oluştu ama Instagram 'ok' yanıtı döndü. Başarılı sayılıyor...")
-                self._paylasim_sonrasi_islemler(video_yolu)
-                return True
-            
-            log(f"Paylaşım hatası: {err_str}")
-            return False
-
-    def _paylasim_sonrasi_islemler(self, video_yolu):
-        """Paylaşım başarılı olduktan sonra sayaçları ve dosyaları temizler."""
-        self.daily_stats["shares"] += 1
-        self._stats_kaydet()
-        try:
-            if os.path.exists(video_yolu):
-                os.remove(video_yolu)
-                log(f"Video paylaşıldı ve sistemden temizlendi.")
-            # Yanındaki thumbnail dosyasını da temizle (instagrapi oluşturur)
+            self.daily_stats["shares"] += 1
+            self._stats_kaydet()
+            if os.path.exists(video_yolu): os.remove(video_yolu)
             thumb = str(video_yolu) + ".jpg"
             if os.path.exists(thumb): os.remove(thumb)
-        except: pass
+            return True
+        except Exception as e:
+            if '"status": "ok"' in str(e).lower():
+                self.daily_stats["shares"] += 1
+                self._stats_kaydet()
+                if os.path.exists(video_yolu): os.remove(video_yolu)
+                return True
+            log(f"Paylaşım hatası: {e}")
+            return False
 
     def planli_paylasim_kontrol(self):
         log("Planlı görevler taranıyor...")
@@ -276,7 +261,6 @@ class InstagramBot:
         simdi = datetime.now()
         bekleyenler = [k for k in meta.values() if k.get("durum") == "bekliyor" and k.get("planlanan_paylasim")]
         if not bekleyenler: return
-        
         bekleyenler.sort(key=lambda x: x["planlanan_paylasim"])
         k = bekleyenler[0]
         if simdi >= datetime.fromisoformat(k["planlanan_paylasim"]):
@@ -287,20 +271,14 @@ class InstagramBot:
             else:
                 video_manager.video_durum_guncelle(k["id"], "dosya_yok")
 
-    # ---- Ana Döngü ----
-
     def calistir(self, mode="all"):
-        # Rastgele başlangıç gecikmesi (Botların aynı anda tetiklenmemesi için)
-        time.sleep(random.randint(1, 30))
-        
-        log(f"Bot güvenli modda başlatıldı (Mod: {mode})")
+        time.sleep(random.randint(1, 10))
+        log(f"Bot başlatıldı (Mod: {mode})")
         self.giris_yap()
-
-        while True:
+        while self.running:
             if self.uyku_kontrolu(): continue
             self.insani_davranis_simule_et()
             self.hesap_istatistiklerini_guncelle()
-
             if mode in ["share", "all"]: self.planli_paylasim_kontrol()
             if mode in ["follow", "all"]:
                 self.otomasyon_takip_et()
@@ -323,11 +301,6 @@ class InstagramBot:
                             if kayit["user_id"]: self.cl.direct_send("İtirafın paylaşıldı!", user_ids=[kayit["user_id"]])
                         self.islenmis.add(kayit["mesaj_id"])
                         self._islenmis_kaydet()
-                    except Exception as e:
-                        log(f"DM Hatası: {e}")
-                        self.islenmis.add(kayit["mesaj_id"])
-                        self._islenmis_kaydet()
+                    except Exception as e: log(f"DM Hatası: {e}")
                     time.sleep(random.randint(20, 45))
-
-            # Ana döngü rastgele bekleme
             time.sleep(random.randint(60, 120))
