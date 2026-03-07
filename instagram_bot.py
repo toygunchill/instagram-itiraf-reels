@@ -1,6 +1,8 @@
 import json
 import time
 import random
+import sys
+from datetime import datetime
 from pathlib import Path
 
 from instagrapi import Client
@@ -15,6 +17,12 @@ from video_generator import VideoGenerator
 import video_manager
 
 
+def log(mesaj: str):
+    zaman = datetime.now().strftime("%H:%M:%S")
+    satir = f"[{zaman}] {mesaj}"
+    print(satir, flush=True)
+
+
 class InstagramBot:
     def __init__(self):
         self.cl = Client()
@@ -26,20 +34,23 @@ class InstagramBot:
     # ---- Session ----
 
     def giris_yap(self):
+        log("Instagram'a giris yapiliyor...")
         if SESSION_FILE.exists():
             try:
+                log("Kayitli session bulundu, yukleniyor...")
                 self.cl.load_settings(str(SESSION_FILE))
                 self.cl.get_timeline_feed()
-                print("Session yuklendi, login atildi.")
+                log("Session gecerli, login atildi.")
                 return
             except LoginRequired:
-                print("Session suresi dolmus, yeniden login yapiliyor...")
+                log("Session suresi dolmus, yeniden login yapiliyor...")
             except Exception as e:
-                print(f"Session hatasi: {e}, yeniden login yapiliyor...")
+                log(f"Session hatasi: {e} — yeniden login yapiliyor...")
 
+        log(f"Kullanici adi ile giris: {IG_USERNAME}")
         self.cl.login(IG_USERNAME, IG_PASSWORD)
         self.cl.dump_settings(str(SESSION_FILE))
-        print("Login basarili, session kaydedildi.")
+        log("Login basarili, session kaydedildi.")
 
     # ---- Islenmis mesaj yonetimi ----
 
@@ -59,10 +70,11 @@ class InstagramBot:
     # ---- DM tarama ----
 
     def dm_tara(self) -> list[dict]:
-        """'itiraf: ' ile baslayan islenmemis DM'leri dondur."""
+        log("DM'ler taraniyor...")
         itiraflar = []
         try:
             threads = self.cl.direct_threads(amount=50)
+            log(f"{len(threads)} DM thread'i bulundu.")
             for thread in threads:
                 for mesaj in thread.messages:
                     if mesaj.id in self.islenmis:
@@ -78,46 +90,56 @@ class InstagramBot:
                                 "user_id": thread.users[0].pk if thread.users else None,
                                 "itiraf": icerik,
                             })
+            if itiraflar:
+                log(f"{len(itiraflar)} yeni itiraf mesaji bulundu.")
+            else:
+                log("Yeni itiraf mesaji bulunamadi.")
         except Exception as e:
-            print(f"DM tarama hatasi: {e}")
+            log(f"DM tarama hatasi: {e}")
         return itiraflar
 
     # ---- Reels paylasimi ----
 
     def reels_paylas(self, video_yolu: str, caption: str) -> bool:
+        log(f"Reels paylasiliyor: {Path(video_yolu).name}")
         try:
             self.cl.clip_upload(Path(video_yolu), caption=caption)
-            print(f"  Reels paylastirildi: {video_yolu}")
+            log("Reels basariyla paylastirildi.")
             return True
         except Exception as e:
-            print(f"  Reels paylasiminda hata: {e}")
+            log(f"Reels paylasim hatasi: {e}")
             return False
 
     # ---- Tesekkur DM ----
 
     def tesekkur_dm_at(self, user_id):
+        log(f"Tesekkur DM gonderiliyor (user_id={user_id})...")
         try:
             self.cl.direct_send(
                 "Itirafin icin tesekkurler! Yakinda yayinlanacak. Bizi takip etmeyi unutma.",
                 user_ids=[user_id],
             )
-            print(f"  Tesekkur DM gonderildi: user_id={user_id}")
+            log("Tesekkur DM gonderildi.")
         except Exception as e:
-            print(f"  Tesekkur DM gonderilemedi: {e}")
+            log(f"Tesekkur DM gonderilemedi: {e}")
 
     # ---- Ana dongu ----
 
     def calistir(self):
-        print("Bot baslatiliyor...")
+        log("=" * 50)
+        log("Bot baslatiliyor...")
+        log(f"Sayfa: {PAGE_NAME} | Hesap: {IG_USERNAME}")
+        log("=" * 50)
+
         self.giris_yap()
+        log("Bot hazir, dongu basliyor.")
 
         while True:
-            print("\nDM'ler taraniyor...")
             itiraflar = self.dm_tara()
 
             if not itiraflar:
                 bekleme = random.randint(120, 300)
-                print(f"Yeni itiraf bulunamadi. {bekleme}sn bekleniyor...")
+                log(f"Yeni itiraf yok. {bekleme} saniye bekleniyor...")
                 time.sleep(bekleme)
                 continue
 
@@ -126,22 +148,32 @@ class InstagramBot:
                 user_id = kayit["user_id"]
                 ham_itiraf = kayit["itiraf"]
 
-                print(f"\nItiraf isleniyor: {ham_itiraf[:60]}...")
+                log("-" * 40)
+                log(f"Itiraf isleniyor: {ham_itiraf[:80]}...")
 
                 try:
+                    log("Claude: metin duzeltiliyor...")
                     itiraf = self.claude.duzenle(ham_itiraf)
-                    kategori = self.claude.kategori_belirle(itiraf)
-                    caption = self.claude.caption_uret(itiraf, kategori)
-                    gonderen = anonim_kullanici_adi()
+                    log(f"Duzeltildi: {itiraf[:80]}...")
 
-                    print(f"  Kategori: {kategori} | Gonderen: {gonderen}")
+                    log("Claude: kategori belirleniyor...")
+                    kategori = self.claude.kategori_belirle(itiraf)
+                    log(f"Kategori: {kategori}")
+
+                    log("Claude: caption uretiliyor...")
+                    caption = self.claude.caption_uret(itiraf, kategori)
+                    log(f"Caption: {caption[:60]}...")
+
+                    gonderen = anonim_kullanici_adi()
+                    log(f"Anonim gonderen: {gonderen}")
 
                     video_id = f"dm_{mesaj_id}"
                     video_adi = f"{video_id}.mp4"
                     video_yolu = str(OUTPUT_DIR / video_adi)
+                    log(f"Video uretiliyor: {video_adi}")
                     self.video_gen.video_olustur(itiraf, gonderen, kategori, video_yolu)
+                    log("Video uretildi.")
 
-                    # Web paneli icin metadata kaydet
                     video_manager.video_ekle(
                         video_id=video_id,
                         dosya=video_adi,
@@ -155,16 +187,16 @@ class InstagramBot:
                         video_manager.video_durum_guncelle(video_id, "paylasıldı")
                         if user_id:
                             self.tesekkur_dm_at(user_id)
-                        print(f"  Tamamlandi: {video_yolu}")
 
                     self.islenmis.add(mesaj_id)
                     self._islenmis_kaydet()
+                    log("Itiraf tamamlandi.")
 
                 except Exception as e:
-                    print(f"  Hata: {e}")
+                    log(f"HATA: {e}")
                     self.islenmis.add(mesaj_id)
                     self._islenmis_kaydet()
 
                 bekleme = random.randint(120, 300)
-                print(f"  {bekleme}sn bekleniyor...")
+                log(f"Sonraki itiraf icin {bekleme} saniye bekleniyor...")
                 time.sleep(bekleme)

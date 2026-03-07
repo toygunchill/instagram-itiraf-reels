@@ -97,10 +97,11 @@ async def bot_baslat():
 
     log_f = open(BOT_LOG_FILE, "a", encoding="utf-8")
     proc = subprocess.Popen(
-        [sys.executable, str(BASE_DIR / "main.py"), "--bot"],
+        [sys.executable, "-u", str(BASE_DIR / "main.py"), "--bot"],
         stdout=log_f,
         stderr=log_f,
         cwd=str(BASE_DIR),
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
     )
     BOT_PID_FILE.write_text(str(proc.pid))
     return {"status": "baslatildi", "pid": proc.pid}
