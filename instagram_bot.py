@@ -115,9 +115,13 @@ class InstagramBot:
             
             if yeni_takip_sayisi == 0:
                 log("Uyarı: Hiç yeni kullanıcı bulunamadı, tümü zaten takip edilmiş.")
-                # Liste bossa bekleme suresini ileri at (1 saat bekle)
                 self.last_fetch_time = datetime.now() + timedelta(hours=1)
                 
+        except LoginRequired:
+            log("Oturum süresi dolmuş veya login gerekiyor, yeniden giriş yapılıyor...")
+            self.giris_yap()
+            # Zamanlamayı sıfırla ki bir sonraki döngüde tekrar denesin
+            self.last_fetch_time = datetime.min
         except Exception as e:
             error_msg = str(e).lower()
             if "wait" in error_msg or "429" in error_msg:
