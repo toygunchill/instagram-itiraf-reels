@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Itiraf Reels Paneli</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text2: #888;
+      --accent: #0095f6;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 17px; font-weight: 600; }
+    .header-durum { font-size: 12px; color: var(--text2); margin-left: auto; }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--danger); flex-shrink: 0;
+    }
+    .dot.aktif { background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 0 24px;
+    }
+    .tab {
+      padding: 11px 18px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--text2);
+      font-size: 14px;
+      transition: color .2s, border-color .2s;
+      user-select: none;
+    }
+    .tab.aktif { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* Main */
+    main { padding: 24px; max-width: 1440px; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.aktif { display: block; }
+
+    /* Toolbar */
+    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .toolbar-bilgi { font-size: 13px; color: var(--text2); }
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text2);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .filter-btn.aktif { border-color: var(--accent); color: var(--accent); background: rgba(0,149,246,.08); }
+
+    /* Video grid */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 18px;
+    }
+    .video-kart {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .video-kart:hover { border-color: #3a3a3a; }
+    .video-kart video {
+      width: 100%; display: block;
+      background: #000;
+      aspect-ratio: 9/16;
+      object-fit: cover;
+    }
+    .kart-body { padding: 14px; }
+    .kart-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .badge {
+      font-size: 11px; padding: 3px 8px; border-radius: 20px;
+      background: var(--surface2); color: var(--text2);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .badge-durum { margin-left: auto; }
+    .badge-bekliyor { background: rgba(245,158,11,.12); color: var(--warning); }
+    .badge-paylasıldı { background: rgba(34,197,94,.12); color: var(--success); }
+    .itiraf-metin {
+      font-size: 13px; color: var(--text2); line-height: 1.55;
+      margin-bottom: 8px;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .caption-metin {
+      font-size: 12px; color: #4a4a4a; line-height: 1.5;
+      margin-bottom: 10px;
+      border-left: 2px solid var(--border); padding-left: 8px;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .gonderen { font-size: 11px; color: #555; margin-bottom: 12px; }
+    .paylas-btn {
+      width: 100%; padding: 9px;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .paylas-btn:hover:not(:disabled) { opacity: .85; }
+    .paylas-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .paylas-btn.paylasıldi { background: var(--surface2); color: var(--text2); }
+
+    .bos-mesaj { text-align: center; padding: 60px 20px; color: var(--text2); grid-column: 1/-1; }
+    .bos-mesaj code { display: block; margin-top: 10px; font-family: monospace; font-size: 12px; color: #555; }
+
+    /* Bot paneli */
+    .kutu {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .kutu-baslik { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+    .durum-satir { display: flex; align-items: center; gap: 12px; }
+    .durum-yazisi { font-size: 14px; }
+    .btn {
+      padding: 8px 16px; border-radius: 8px; border: none;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn:hover:not(:disabled) { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-yesil { background: var(--success); color: #fff; }
+    .btn-kirmizi { background: var(--danger); color: #fff; }
+
+    /* Log */
+    .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .log-header span { font-size: 12px; color: var(--text2); }
+    .log-temizle { background: none; border: none; color: #555; font-size: 12px; cursor: pointer; }
+    .log-ekran {
+      background: #080808;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      height: 440px;
+      overflow-y: auto;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #8a8a8a;
+    }
+    .log-satir { white-space: pre-wrap; word-break: break-all; }
+    .log-satir.hata { color: var(--danger); }
+    .log-satir.basari { color: var(--success); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      transform: translateY(80px); opacity: 0;
+      transition: all .3s; z-index: 100;
+    }
+    .toast.goster { transform: translateY(0); opacity: 1; }
+    .toast.basari { border-color: var(--success); color: var(--success); }
+    .toast.hata { border-color: var(--danger); color: var(--danger); }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0095f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+  </svg>
+  <h1>Itiraf Reels Paneli</h1>
+  <span class="header-durum" id="header-durum">Kontrol ediliyor...</span>
+  <div class="dot" id="header-dot"></div>
+</header>
+
+<div class="tabs">
+  <div class="tab aktif" onclick="sekme('videolar', this)">Videolar <span id="video-sayac"></span></div>
+  <div class="tab" onclick="sekme('bot', this)">DM Botu</div>
+</div>
+
+<main>
+
+  <!-- === Videolar === -->
+  <div class="panel aktif" id="panel-videolar">
+    <div class="toolbar">
+      <span class="toolbar-bilgi" id="toolbar-bilgi"></span>
+      <button class="filter-btn aktif" onclick="filtre('hepsi', this)">Hepsi</button>
+      <button class="filter-btn" onclick="filtre('bekliyor', this)">Bekliyor</button>
+      <button class="filter-btn" onclick="filtre('paylasıldı', this)">Paylasıldı</button>
+    </div>
+    <div class="video-grid" id="video-grid">
+      <div class="bos-mesaj">Yukleniyor...</div>
+    </div>
+  </div>
+
+  <!-- === Bot === -->
+  <div class="panel" id="panel-bot">
+    <div class="kutu">
+      <div class="kutu-baslik">Bot Durumu</div>
+      <div class="durum-satir">
+        <div class="dot" id="bot-dot"></div>
+        <span class="durum-yazisi" id="bot-durum-yazisi">Kontrol ediliyor...</span>
+        <button class="btn btn-yesil" id="btn-baslat" onclick="botBaslat()">Botu Baslat</button>
+        <button class="btn btn-kirmizi" id="btn-durdur" onclick="botDurdur()" style="display:none">Durdur</button>
+      </div>
+    </div>
+
+    <div class="kutu">
+      <div class="log-header">
+        <span>Canli Loglar</span>
+        <button class="log-temizle" onclick="logTemizle()">Temizle</button>
+      </div>
+      <div class="log-ekran" id="log-ekran"></div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let tumVideolar = [];
+  let aktifFiltre = 'hepsi';
+  let logTimer = null;
+  let sonLogSatir = 0;
+
+  // ---- Sekmeler ----
+  function sekme(id, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('aktif'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('aktif'));
+    document.getElementById('panel-' + id).classList.add('aktif');
+    el.classList.add('aktif');
+    if (id === 'bot') {
+      logTimer = setInterval(logGuncelle, 3000);
+      logGuncelle();
+    } else {
+      clearInterval(logTimer);
+    }
+  }
+
+  // ---- Toast ----
+  function toast(msg, tip = 'basari') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast goster ${tip}`;
+    setTimeout(() => el.className = 'toast', 3500);
+  }
+
+  // ---- Filtre ----
+  function filtre(deger, el) {
+    aktifFiltre = deger;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('aktif'));
+    el.classList.add('aktif');
+    videolariGoster();
+  }
+
+  function videolariGoster() {
+    const grid = document.getElementById('video-grid');
+    let liste = tumVideolar;
+    if (aktifFiltre !== 'hepsi') {
+      liste = tumVideolar.filter(v => v.durum === aktifFiltre);
+    }
+
+    document.getElementById('toolbar-bilgi').textContent =
+      `${liste.length} video`;
+
+    if (!liste.length) {
+      grid.innerHTML = `<div class="bos-mesaj">
+        Gosterilecek video yok.
+        <code>python main.py --json data.json --page sayfaadi</code>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = liste.map(v => {
+      const paylasıldi = v.durum === 'paylasıldı';
+      return `
+        <div class="video-kart" id="kart-${v.id}">
+          <video controls preload="metadata">
+            <source src="/output/${v.dosya}" type="video/mp4">
+          </video>
+          <div class="kart-body">
+            <div class="kart-meta">
+              <span class="badge">${v.kategori}</span>
+              <span class="badge badge-durum ${paylasıldi ? 'badge-paylasıldı' : 'badge-bekliyor'}">
+                ${paylasıldi ? 'Paylasıldı' : 'Bekliyor'}
+              </span>
+            </div>
+            <div class="itiraf-metin">${escHtml(v.itiraf)}</div>
+            <div class="caption-metin">${escHtml(v.caption)}</div>
+            <div class="gonderen">Gonderen: ${escHtml(v.gonderen)}</div>
+            <button
+              class="paylas-btn ${paylasıldi ? 'paylasıldi' : ''}"
+              onclick="paylas('${v.id}', this)"
+              ${paylasıldi ? 'disabled' : ''}
+            >${paylasıldi ? 'Paylasıldı' : "Instagram'a Paylas"}</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function videoYukle() {
+    try {
+      const r = await fetch('/api/videos');
+      tumVideolar = await r.json();
+      document.getElementById('video-sayac').textContent = `(${tumVideolar.length})`;
+      videolariGoster();
+    } catch (e) {
+      document.getElementById('video-grid').innerHTML =
+        `<div class="bos-mesaj">Baglanti hatasi: ${escHtml(e.message)}</div>`;
+    }
+  }
+
+  async function paylas(videoId, btn) {
+    if (!confirm("Bu videoyu Instagram'da paylasmak istediginize emin misiniz?")) return;
+    btn.disabled = true;
+    btn.textContent = 'Paylasiliyor...';
+    try {
+      const r = await fetch(`/api/paylas/${videoId}`, { method: 'POST' });
+      const data = await r.json();
+      if (r.ok) {
+        toast('Video basariyla paylasıldı!');
+        setTimeout(videoYukle, 600);
+      } else {
+        toast(`Hata: ${data.detail}`, 'hata');
+        btn.disabled = false;
+        btn.textContent = "Instagram'a Paylas";
+      }
+    } catch (e) {
+      toast(`Hata: ${e.message}`, 'hata');
+      btn.disabled = false;
+      btn.textContent = "Instagram'a Paylas";
+    }
+  }
+
+  // ---- Bot ----
+  async function botDurumKontrol() {
+    try {
+      const r = await fetch('/api/bot/status');
+      const d = await r.json();
+      const aktif = d.calisiyor;
+
+      ['header-dot', 'bot-dot'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = 'dot' + (aktif ? ' aktif' : '');
+      });
+
+      document.getElementById('header-durum').textContent =
+        aktif ? 'Bot calisiyor' : 'Bot durdu';
+      document.getElementById('bot-durum-yazisi').textContent =
+        aktif ? 'Bot aktif — DM\'ler taraniyor' : 'Bot durdu';
+
+      document.getElementById('btn-baslat').style.display = aktif ? 'none' : '';
+      document.getElementById('btn-durdur').style.display = aktif ? '' : 'none';
+    } catch (_) {}
+  }
+
+  async function botBaslat() {
+    const btn = document.getElementById('btn-baslat');
+    btn.disabled = true;
+    try {
+      await fetch('/api/bot/start', { method: 'POST' });
+      toast('Bot baslatildi');
+      setTimeout(botDurumKontrol, 1000);
+    } catch (e) { toast(`Hata: ${e.message}`, 'hata'); }
+    btn.disabled = false;
+  }
+
+  async function botDurdur() {
+    const btn = document.getElementById('btn-durdur');
+    btn.disabled = true;
+    try {
+      await fetch('/api/bot/stop', { method: 'POST' });
+      toast('Bot durduruldu');
+      setTimeout(botDurumKontrol, 1000);
+    } catch (e) { toast(`Hata: ${e.message}`, 'hata'); }
+    btn.disabled = false;
+  }
+
+  async function logGuncelle() {
+    try {
+      const r = await fetch('/api/bot/logs?satirlar=150');
+      const d = await r.json();
+      const ekran = document.getElementById('log-ekran');
+      const satirlar = d.satirlar || [];
+
+      if (satirlar.length === sonLogSatir) return;
+      sonLogSatir = satirlar.length;
+
+      const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
+      ekran.innerHTML = satirlar.map(s => {
+        const cls = s.toLowerCase().includes('hata') ? 'hata'
+                  : s.toLowerCase().includes('tamamlandi') || s.toLowerCase().includes('basarili') ? 'basari'
+                  : '';
+        return `<p class="log-satir ${cls}">${escHtml(s)}</p>`;
+      }).join('');
+
+      if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
+    } catch (_) {}
+  }
+
+  function logTemizle() {
+    document.getElementById('log-ekran').innerHTML = '';
+    sonLogSatir = 0;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ---- Baslangic ----
+  videoYukle();
+  botDurumKontrol();
+  setInterval(botDurumKontrol, 10000);
+  setInterval(videoYukle, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/toyguncil/Desktop/instagramproject rev-parse --is-inside-work-tree 2>/dev/null || echo \"git repo yok\")",
+      "Bash(git -C /Users/toyguncil/Desktop/instagramproject remote -v; git -C /Users/toyguncil/Desktop/instagramproject log --oneline -5)",
+      "Bash(which gh && gh auth status 2>&1 | head -5)"
+    ]
+  }
+}

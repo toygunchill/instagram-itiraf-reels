@@ -1,0 +1,24 @@
+# Ortam
+.env
+*.env
+
+# Session ve islenmis mesajlar
+session.json
+islenmis.json
+bot.pid
+bot.log
+
+# Video ciktilari
+output/
+muzik/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
