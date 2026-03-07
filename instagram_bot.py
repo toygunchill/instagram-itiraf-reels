@@ -235,17 +235,40 @@ class InstagramBot:
         if self.daily_stats["shares"] >= 50: # Günlük Limit
             log("GÜNLÜK PAYLAŞIM LİMİTİNE ULAŞILDI!")
             return False
+        
         log(f"Reels paylaşılıyor (İnsansı hız)...")
         try:
-            self.cl.clip_upload(Path(video_yolu), caption=caption)
+            # Paylaşım öncesi kısa bir insansı bekleme
+            time.sleep(random.randint(5, 15))
+            
+            result = self.cl.clip_upload(Path(video_yolu), caption=caption)
             log("Paylaşım başarılı.")
-            self.daily_stats["shares"] += 1
-            self._stats_kaydet()
-            if os.path.exists(video_yolu): os.remove(video_yolu)
+            self._paylasim_sonrasi_islemler(video_yolu)
             return True
+            
         except Exception as e:
-            log(f"Paylaşım hatası: {e}")
+            err_str = str(e)
+            # Kritik Düzeltme: Eğer hata mesajı 'ok' içeriyorsa aslında paylaşılmıştır
+            if '"status": "ok"' in err_str.lower() or "'status': 'ok'" in err_str.lower():
+                log("Bilgi: Bilinmeyen bir hata oluştu ama Instagram 'ok' yanıtı döndü. Başarılı sayılıyor...")
+                self._paylasim_sonrasi_islemler(video_yolu)
+                return True
+            
+            log(f"Paylaşım hatası: {err_str}")
             return False
+
+    def _paylasim_sonrasi_islemler(self, video_yolu):
+        """Paylaşım başarılı olduktan sonra sayaçları ve dosyaları temizler."""
+        self.daily_stats["shares"] += 1
+        self._stats_kaydet()
+        try:
+            if os.path.exists(video_yolu):
+                os.remove(video_yolu)
+                log(f"Video paylaşıldı ve sistemden temizlendi.")
+            # Yanındaki thumbnail dosyasını da temizle (instagrapi oluşturur)
+            thumb = str(video_yolu) + ".jpg"
+            if os.path.exists(thumb): os.remove(thumb)
+        except: pass
 
     def planli_paylasim_kontrol(self):
         log("Planlı görevler taranıyor...")
