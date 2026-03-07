@@ -218,17 +218,38 @@ async def follow_bot_logs(satirlar: int = 150):
 
 @app.get("/api/follow/stats")
 async def follow_stats():
-    from config import FOLLOWED_USERS_FILE
+    from config import FOLLOWED_USERS_FILE, BASE_DIR
+    stats_file = BASE_DIR / "stats.json"
+
+    follower_count = 0
+    following_count = 0
+
+    # Hesap bilgilerini çek (Botun güncellediği dosya)
+    if stats_file.exists():
+        try:
+            with open(stats_file, "r") as f:
+                s_data = json.load(f)
+                follower_count = s_data.get("follower_count", 0)
+                following_count = s_data.get("following_count", 0)
+        except: pass
+
     if not FOLLOWED_USERS_FILE.exists():
-        return {"followed": 0, "unfollowed": 0}
+        return {"followed": 0, "unfollowed": 0, "followers": follower_count, "following": following_count}
+
     try:
         with open(FOLLOWED_USERS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         followed = sum(1 for x in data.values() if x["status"] == "followed")
         unfollowed = sum(1 for x in data.values() if x["status"] == "unfollowed")
-        return {"followed": followed, "unfollowed": unfollowed}
+        return {
+            "followed": followed, 
+            "unfollowed": unfollowed,
+            "followers": follower_count,
+            "following": following_count
+        }
     except:
-        return {"followed": 0, "unfollowed": 0}
+        return {"followed": 0, "unfollowed": 0, "followers": follower_count, "following": following_count}
+
 
 
 if __name__ == "__main__":

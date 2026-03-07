@@ -284,6 +284,19 @@ class InstagramBot:
             # Hata varsa bekletmemek icin belki status degistirilebilir
             video_manager.video_durum_guncelle(vid, "dosya_yok")
 
+    def hesap_istatistiklerini_guncelle(self):
+        try:
+            user_info = self.cl.user_info(self.cl.user_id)
+            stats = {
+                "follower_count": user_info.follower_count,
+                "following_count": user_info.following_count,
+                "updated_at": datetime.now().isoformat()
+            }
+            with open(BASE_DIR / "stats.json", "w", encoding="utf-8") as f:
+                json.dump(stats, f)
+        except Exception as e:
+            pass
+
     # ---- Ana dongu ----
 
     def calistir(self, mode="all"):
@@ -296,6 +309,9 @@ class InstagramBot:
         log("Bot hazir, dongu basliyor.")
 
         while True:
+            # Hesap istatistiklerini güncelle
+            self.hesap_istatistiklerini_guncelle()
+
             # 1. Planlı Paylaşımlar (Sadece 'dm' veya 'all' modunda)
             if mode in ["dm", "all"]:
                 self.planli_paylasim_kontrol()
