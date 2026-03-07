@@ -78,6 +78,22 @@ def anonim_kullanici_adi() -> str:
     return f"{sifat}_{kelime}_{sayi}"
 
 
+# JSON theme -> dahili kategori eslemesi
+TEMA_HARITASI = {
+    "ilişki": "iliski", "iliski": "iliski",
+    "aldatma": "iliski", "aşk": "iliski", "ask": "iliski",
+    "aile": "aile",
+    "iş": "is", "is": "is", "çalışma": "is", "calisma": "is",
+    "arkadaşlık": "arkadaslik", "arkadaslik": "arkadaslik", "arkadaş": "arkadaslik",
+    "genel": "genel",
+}
+
+
+def tema_donustur(tema: str) -> str:
+    """JSON'daki theme/tema degerini dahili kategori koduna donustur."""
+    return TEMA_HARITASI.get(tema.lower().strip(), "genel")
+
+
 def muzik_sec(kategori: str) -> str | None:
     """Kategoriye gore muzik klasorunden rastgele bir .mp3 sec."""
     alt_klasor = KATEGORI_MUZIK.get(kategori, "genel")

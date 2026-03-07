@@ -123,6 +123,42 @@ class InstagramBot:
         except Exception as e:
             log(f"Tesekkur DM gonderilemedi: {e}")
 
+    def planli_paylasim_kontrol(self):
+        log("Planli paylasimlar kontrol ediliyor...")
+        meta = video_manager.meta_yukle()
+        simdi = datetime.now()
+
+        # "bekliyor" olan ve zamani gelmis olanlari bul
+        paylasilacaklar = []
+        for vid, k in meta.items():
+            if k.get("durum") == "bekliyor" and k.get("planlanan_paylasim"):
+                try:
+                    plan_zamani = datetime.fromisoformat(k["planlanan_paylasim"])
+                    if simdi >= plan_zamani:
+                        paylasilacaklar.append(k)
+                except Exception:
+                    continue
+
+        if not paylasilacaklar:
+            log("Planlanmis paylasim bulunmadi.")
+            return
+
+        # En eski planliyi once paylas
+        paylasilacaklar.sort(key=lambda x: x["planlanan_paylasim"])
+        k = paylasilacaklar[0]
+        vid = k["id"]
+
+        log(f"Planli paylasim zamani gelmis: {vid}")
+        video_yolu = str(OUTPUT_DIR / k["dosya"])
+        if Path(video_yolu).exists():
+            if self.reels_paylas(video_yolu, k["caption"]):
+                video_manager.video_durum_guncelle(vid, "paylasıldı")
+                log(f"Planli paylasim tamamlandi: {vid}")
+        else:
+            log(f"Hata: Video dosyasi bulunamadi {video_yolu}")
+            # Hata varsa bekletmemek icin belki status degistirilebilir
+            video_manager.video_durum_guncelle(vid, "dosya_yok")
+
     # ---- Ana dongu ----
 
     def calistir(self):
@@ -135,6 +171,9 @@ class InstagramBot:
         log("Bot hazir, dongu basliyor.")
 
         while True:
+            # Once planlilari kontrol et
+            self.planli_paylasim_kontrol()
+
             itiraflar = self.dm_tara()
 
             if not itiraflar:

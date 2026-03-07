@@ -209,6 +209,7 @@
 
 <div class="tabs">
   <div class="tab aktif" onclick="sekme('videolar', this)">Videolar <span id="video-sayac"></span></div>
+  <div class="tab" onclick="sekme('hizli', this)">Hızlı Üret (JSON)</div>
   <div class="tab" onclick="sekme('bot', this)">DM Botu</div>
 </div>
 
@@ -224,6 +225,29 @@
     </div>
     <div class="video-grid" id="video-grid">
       <div class="bos-mesaj">Yukleniyor...</div>
+    </div>
+  </div>
+
+  <!-- === Hızlı Üret === -->
+  <div class="panel" id="panel-hizli">
+    <div class="kutu">
+      <div class="kutu-baslik">JSON İle Toplu Üretim</div>
+      <p style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">
+        Aşağıdaki alana itiraf JSON'ını yapıştırın. Videolar hemen üretilecek ve 30'ar dakika ara ile paylaşılmak üzere sıraya alınacaktır.
+      </p>
+      <textarea id="json-input" placeholder='{
+  "confessions": [
+    {
+      "persona": "23 yaşında...",
+      "theme": "ilişki",
+      "text": "Sevgilimle kavga edince..."
+    }
+  ]
+}' style="width: 100%; height: 300px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #aaa; font-family: monospace; padding: 12px; margin-bottom: 16px;"></textarea>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-yesil" onclick="hizliUret()">Üret ve 30dk Ara İle Paylaş</button>
+        <button class="btn" style="background: var(--surface2); color: var(--text2);" onclick="jsonOrnek()">Örnek Format</button>
+      </div>
     </div>
   </div>
 
@@ -308,6 +332,9 @@
 
     grid.innerHTML = liste.map(v => {
       const paylasıldi = v.durum === 'paylasıldı';
+      const planli = v.planlanan_paylasim && !paylasıldi;
+      const planliZamani = planli ? new Date(v.planlanan_paylasim).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : null;
+      
       return `
         <div class="video-kart" id="kart-${v.id}">
           <video controls preload="metadata">
@@ -316,8 +343,8 @@
           <div class="kart-body">
             <div class="kart-meta">
               <span class="badge">${v.kategori}</span>
-              <span class="badge badge-durum ${paylasıldi ? 'badge-paylasıldı' : 'badge-bekliyor'}">
-                ${paylasıldi ? 'Paylasıldı' : 'Bekliyor'}
+              <span class="badge badge-durum ${paylasıldi ? 'badge-paylasıldı' : (planli ? 'badge-bekliyor' : 'badge-bekliyor')}">
+                ${paylasıldi ? 'Paylasıldı' : (planli ? 'Zamanlandı: ' + planliZamani : 'Bekliyor')}
               </span>
             </div>
             <div class="itiraf-metin">${escHtml(v.itiraf)}</div>
@@ -331,6 +358,55 @@
           </div>
         </div>`;
     }).join('');
+  }
+
+  async function hizliUret() {
+    const input = document.getElementById('json-input').value;
+    if (!input) {
+      toast('Lütfen JSON verisi girin!', 'hata');
+      return;
+    }
+
+    try {
+      const data = JSON.parse(input);
+      const r = await fetch('/api/generate_from_json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const res = await r.json();
+      if (r.ok) {
+        toast(res.mesaj);
+        document.getElementById('json-input').value = '';
+        sekme('videolar', document.querySelectorAll('.tab')[0]);
+        setTimeout(videoYukle, 1000);
+      } else {
+        toast(`Hata: ${res.detail}`, 'hata');
+      }
+    } catch (e) {
+      toast('JSON formatı geçersiz!', 'hata');
+    }
+  }
+
+  function jsonOrnek() {
+    const ornek = {
+      "meta": { "language": "tr", "count": 2 },
+      "confessions": [
+        {
+          "id": 1,
+          "persona": "23 yaşında market kasiyeri kadın",
+          "theme": "ilişki",
+          "text": "Sevgilimle kavga edince eski konuşmaları dönüp okuyom. Bitti diyorum ama içten içe yazsın istiyom."
+        },
+        {
+          "id": 2,
+          "persona": "31 yaşında evli erkek, servis şoförü",
+          "theme": "aldatma",
+          "text": "Eşimden gizli iş yerinden biriyle mesajlaştım. Bişey olmadı ama olsa da olurdu galiba, bundan utanıyom."
+        }
+      ]
+    };
+    document.getElementById('json-input').value = JSON.stringify(ornek, null, 2);
   }
 
   async function videoYukle() {
