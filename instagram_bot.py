@@ -270,15 +270,17 @@ class InstagramBot:
         log("Bot hazir, dongu basliyor.")
 
         while True:
-            # Planlı Reels paylaşımlarını kontrol et (Her iki modda da çalışsın)
-            self.planli_paylasim_kontrol()
-            
-            # Takip otomasyonu (Sadece 'follow' veya 'all' modunda)
+            # 1. Planlı Paylaşımlar (Sadece 'dm' veya 'all' modunda)
+            # Bu sayede takip botu reels paylasimi ile ugrasmaz.
+            if mode in ["dm", "all"]:
+                self.planli_paylasim_kontrol()
+
+            # 2. Takip Otomasyonu (Sadece 'follow' veya 'all' modunda)
             if mode in ["follow", "all"]:
                 self.otomasyon_takip_et()
                 self.otomasyon_takipten_cik()
 
-            # DM tarama (Sadece 'dm' veya 'all' modunda)
+            # 3. DM Tarama ve Reels Üretme (Sadece 'dm' veya 'all' modunda)
             if mode in ["dm", "all"]:
                 itiraflar = self.dm_tara()
 
@@ -289,31 +291,24 @@ class InstagramBot:
                         ham_itiraf = kayit["itiraf"]
 
                         log("-" * 40)
-                        log(f"Itiraf isleniyor: {ham_itiraf[:80]}...")
+                        log(f"Yeni DM itirafı isleniyor: {ham_itiraf[:80]}...")
 
                         try:
                             log("Claude: metin duzeltiliyor...")
                             itiraf = self.claude.duzenle(ham_itiraf)
-                            log(f"Duzeltildi: {itiraf[:80]}...")
-
-                            log("Claude: kategori belirleniyor...")
+                            
+                            log("Claude: kategori/caption hazirlaniyor...")
                             kategori = self.claude.kategori_belirle(itiraf)
-                            log(f"Kategori: {kategori}")
-
-                            log("Claude: caption uretiliyor...")
                             caption = self.claude.caption_uret(itiraf, kategori)
-                            log(f"Caption: {caption[:60]}...")
-
+                            
                             gonderen = anonim_kullanici_adi()
-                            log(f"Anonim gonderen: {gonderen}")
-
                             video_id = f"dm_{mesaj_id}"
                             video_adi = f"{video_id}.mp4"
                             video_yolu = str(OUTPUT_DIR / video_adi)
-                            log(f"Video uretiliyor: {video_adi}")
+                            
+                            log(f"Video üretiliyor: {video_adi}")
                             self.video_gen.video_olustur(itiraf, gonderen, kategori, video_yolu)
-                            log("Video uretildi.")
-
+                            
                             video_manager.video_ekle(
                                 video_id=video_id,
                                 dosya=video_adi,
@@ -323,6 +318,7 @@ class InstagramBot:
                                 gonderen=gonderen,
                             )
 
+                            # Hemen paylas
                             if self.reels_paylas(video_yolu, caption):
                                 video_manager.video_durum_guncelle(video_id, "paylasıldı")
                                 if user_id:
@@ -330,12 +326,12 @@ class InstagramBot:
 
                             self.islenmis.add(mesaj_id)
                             self._islenmis_kaydet()
-                            log("Itiraf tamamlandi.")
+                            log("DM itirafı tamamlandi ve paylasıldı.")
 
                         except Exception as e:
-                            log(f"HATA: {e}")
+                            log(f"DM isleme hatası: {e}")
                             self.islenmis.add(mesaj_id)
-                            self._islenmis_yukle()
+                            self._islenmis_kaydet()
 
                         time.sleep(10)
 
