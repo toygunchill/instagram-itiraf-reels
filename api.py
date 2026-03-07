@@ -116,11 +116,13 @@ async def paylas(video_id: str):
             video_manager.video_durum_guncelle(video_id, "paylasıldı")
             return {"status": "ok", "mesaj": "Basariyla paylasıldı"}
         else:
-            raise HTTPException(status_code=500, detail="Paylasim basarisiz")
+            # Bot içindeki günlük limit veya başka bir False dönme durumu
+            raise HTTPException(status_code=500, detail="Instagram paylaşımı reddetti veya günlük limite takıldınız.")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Hatanın gerçek içeriğini döndür (Örn: Dosya bulunamadı, Login hatası vb.)
+        raise HTTPException(status_code=500, detail=f"Hata: {str(e)}")
 
 
 # ---- Bot API Yardimcilari ----
