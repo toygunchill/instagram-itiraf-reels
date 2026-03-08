@@ -54,3 +54,24 @@ def video_durum_guncelle(video_id: str, durum: str):
     if durum == "paylasıldı":
         meta[video_id]["paylasim_zamani"] = datetime.now().isoformat()
     meta_kaydet(meta)
+
+
+def video_sil(video_id: str):
+    """Videoyu metadata dosyasindan ve diskten siler."""
+    meta = meta_yukle()
+    if video_id not in meta:
+        return False
+    
+    data = meta[video_id]
+    video_yolu = OUTPUT_DIR / data["dosya"]
+    # Kapak fotoğrafını da silmeye çalış (eğer .jpg uzantılı bir kapak varsa)
+    kapak_yolu = OUTPUT_DIR / (data["dosya"] + ".jpg")
+
+    if video_yolu.exists():
+        video_yolu.unlink()
+    if kapak_yolu.exists():
+        kapak_yolu.unlink()
+        
+    del meta[video_id]
+    meta_kaydet(meta)
+    return True

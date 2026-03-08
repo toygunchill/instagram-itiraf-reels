@@ -134,6 +134,16 @@
     .paylas-btn:disabled { opacity: .4; cursor: not-allowed; }
     .paylas-btn.paylasıldi { background: var(--surface2); color: var(--text2); }
 
+    .sil-btn {
+      margin-top: 8px;
+      width: 100%; padding: 6px;
+      background: none; color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.2); border-radius: 8px;
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all .2s;
+    }
+    .sil-btn:hover { background: rgba(239,68,68,0.1); border-color: var(--danger); }
+
     .bos-mesaj { text-align: center; padding: 60px 20px; color: var(--text2); grid-column: 1/-1; }
     .bos-mesaj code { display: block; margin-top: 10px; font-family: monospace; font-size: 12px; color: #555; }
 
@@ -426,9 +436,11 @@
               </span>
             </div>
             <div class="itiraf-metin">${escHtml(v.itiraf)}</div>
+            <div class="caption-metin" title="Paylaşım Metni">${escHtml(v.caption)}</div>
             <button class="paylas-btn ${paylasıldi ? 'paylasıldi' : ''}" onclick="paylas('${v.id}', this)" ${paylasıldi ? 'disabled' : ''}>
               ${paylasıldi ? 'Paylasıldı' : "Instagram'a Paylas"}
             </button>
+            <button class="sil-btn" onclick="videoSil('${v.id}')">Listeden Sil</button>
           </div>
         </div>`;
     }).join('');
@@ -451,6 +463,21 @@
       if (r.ok) { toast('Basarili!'); videoYukle(); }
       else { toast('Hata!', 'hata'); btn.disabled = false; }
     } catch (e) { toast(e.message, 'hata'); btn.disabled = false; }
+  }
+
+  async function videoSil(videoId) {
+    if (!confirm("Bu videoyu silmek istediğinize emin misiniz? (Dosya ve kayıt tamamen silinecektir)")) return;
+    try {
+      const r = await fetch(`/api/videos/${videoId}`, { method: 'DELETE' });
+      if (r.ok) {
+        toast('Video silindi');
+        videoYukle();
+      } else {
+        toast('Silme hatası!', 'hata');
+      }
+    } catch (e) {
+      toast(e.message, 'hata');
+    }
   }
 
   // ---- Bot Islemleri ----

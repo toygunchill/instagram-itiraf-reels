@@ -60,6 +60,14 @@ async def list_videos():
     return sorted(güncel_meta.values(), key=lambda v: v.get("olusturulma", ""), reverse=True)
 
 
+@app.delete("/api/videos/{video_id}")
+async def delete_video(video_id: str):
+    ok = video_manager.video_sil(video_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Video bulunamadi")
+    return {"status": "ok", "mesaj": "Video basariyla silindi"}
+
+
 @app.post("/api/generate_from_json")
 async def generate_from_json(request: Request, background_tasks: BackgroundTasks):
     try:
