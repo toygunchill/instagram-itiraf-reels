@@ -147,14 +147,26 @@
     .paylas-btn.paylasıldi { background: var(--surface2); color: var(--text2); }
 
     .sil-btn {
-      margin-top: 8px;
-      width: 100%; padding: 6px;
+      flex: 1; padding: 6px;
       background: none; color: var(--danger);
       border: 1px solid rgba(239,68,68,0.2); border-radius: 8px;
       font-size: 11px; font-weight: 500;
       cursor: pointer; transition: all .2s;
     }
     .sil-btn:hover { background: rgba(239,68,68,0.1); border-color: var(--danger); }
+
+    .ikincil-btn {
+      flex: 1; padding: 6px;
+      background: var(--surface2); color: var(--text2);
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all .2s;
+    }
+    .ikincil-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .kart-aksiyonlar {
+      display: flex; gap: 8px; margin-top: 8px;
+    }
 
     .bos-mesaj { text-align: center; padding: 60px 20px; color: var(--text2); grid-column: 1/-1; }
     .bos-mesaj code { display: block; margin-top: 10px; font-family: monospace; font-size: 12px; color: #555; }
@@ -455,7 +467,10 @@
             <button class="paylas-btn ${paylasıldi ? 'paylasıldi' : ''}" onclick="paylas('${v.id}', this)" ${paylasıldi ? 'disabled' : ''}>
               ${paylasıldi ? 'Paylasıldı' : "Instagram'a Paylas"}
             </button>
-            <button class="sil-btn" onclick="videoSil('${v.id}')">Listeden Sil</button>
+            <div class="kart-aksiyonlar">
+              <button class="ikincil-btn" onclick="markShared('${v.id}')" ${paylasıldi ? 'style="display:none"' : ''}>İşaretle</button>
+              <button class="sil-btn" onclick="videoSil('${v.id}')">Sil</button>
+            </div>
           </div>
         </div>`;
     }).join('');
@@ -489,6 +504,21 @@
         videoYukle();
       } else {
         toast('Silme hatası!', 'hata');
+      }
+    } catch (e) {
+      toast(e.message, 'hata');
+    }
+  }
+
+  async function markShared(videoId) {
+    if (!confirm("Bu videoyu manuel olarak paylaşıldı işaretlemek istiyor musunuz? (Dosya silinecektir)")) return;
+    try {
+      const r = await fetch(`/api/mark_shared/${videoId}`, { method: 'POST' });
+      if (r.ok) {
+        toast('Paylaşıldı işaretlendi');
+        videoYukle();
+      } else {
+        toast('Hata oluştu!', 'hata');
       }
     } catch (e) {
       toast(e.message, 'hata');

@@ -68,6 +68,24 @@ async def delete_video(video_id: str):
     return {"status": "ok", "mesaj": "Video basariyla silindi"}
 
 
+@app.post("/api/mark_shared/{video_id}")
+async def mark_shared(video_id: str):
+    meta = video_manager.meta_yukle()
+    if video_id not in meta:
+        raise HTTPException(status_code=404, detail="Video bulunamadi")
+    
+    # Dosyayı sil (Paylaşıldı durumunda dosya sistemden kalkmalı)
+    data = meta[video_id]
+    video_yolu = OUTPUT_DIR / data["dosya"]
+    kapak_yolu = OUTPUT_DIR / (data["dosya"] + ".jpg")
+    
+    if video_yolu.exists(): video_yolu.unlink()
+    if kapak_yolu.exists(): kapak_yolu.unlink()
+
+    video_manager.video_durum_guncelle(video_id, "paylasıldı")
+    return {"status": "ok", "mesaj": "Video paylasıldı olarak isaretlendi ve dosya silindi"}
+
+
 @app.post("/api/generate_from_json")
 async def generate_from_json(request: Request, background_tasks: BackgroundTasks):
     try:
