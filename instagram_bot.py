@@ -103,6 +103,10 @@ class InstagramBot:
 
     def giris_yap(self):
         log("Instagram'a güvenli giriş yapılıyor...")
+        
+        # Giriş yapmadan önce rastgele bekleme
+        time.sleep(random.uniform(2, 5))
+        
         if SESSION_FILE.exists():
             try:
                 self.cl.load_settings(str(SESSION_FILE))
@@ -110,14 +114,22 @@ class InstagramBot:
                 log("Mevcut oturumla devam ediliyor.")
                 return
             except:
-                log("Oturum geçersiz, yeniden giriş yapılıyor...")
+                log("Oturum geçersiz, temizleniyor...")
+                if SESSION_FILE.exists():
+                    os.remove(SESSION_FILE)
 
         try:
+            # User agent'ı yenile
+            self.cl.set_user_agent() 
+            log(f"Kullanıcı adı deneniyor: {IG_USERNAME}")
             self.cl.login(IG_USERNAME, IG_PASSWORD)
             self.cl.dump_settings(str(SESSION_FILE))
             log("Yeni oturum açıldı ve kaydedildi.")
         except Exception as e:
             log(f"Giriş hatası: {e}")
+            # Eğer hata 'UnknownError' veya 'Bad Request' ise session temizle
+            if SESSION_FILE.exists():
+                os.remove(SESSION_FILE)
             raise
 
     def cikis_yap(self):
