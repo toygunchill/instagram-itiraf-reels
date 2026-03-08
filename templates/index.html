@@ -611,9 +611,15 @@
     } catch (_) {}
   }
 
-  function logTemizle(mode) {
-    document.getElementById(`${mode}-log-ekran`).innerHTML = '';
-    sonLogs[mode] = 0;
+  async function logTemizle(mode) {
+    try {
+      await fetch(`/api/${mode}_bot/logs/clear`, { method: 'POST' });
+      document.getElementById(`${mode}-log-ekran`).innerHTML = '';
+      sonLogs[mode] = 0;
+      toast('Loglar temizlendi');
+    } catch (e) {
+      toast('Log temizleme hatası', 'hata');
+    }
   }
 
   // ---- Uretim Islemleri ----

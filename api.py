@@ -220,6 +220,12 @@ async def dm_bot_logs(satirlar: int = 150):
         lines = f.readlines()[-satirlar:]
     return {"satirlar": [l.rstrip() for l in lines]}
 
+@app.post("/api/dm_bot/logs/clear")
+async def dm_bot_logs_clear():
+    if DM_LOG_FILE.exists():
+        DM_LOG_FILE.write_text("")
+    return {"status": "ok"}
+
 # ---- Follow Bot API ----
 
 @app.get("/api/follow_bot/status")
@@ -255,6 +261,12 @@ async def follow_bot_logs(satirlar: int = 150):
         lines = f.readlines()[-satirlar:]
     return {"satirlar": [l.rstrip() for l in lines]}
 
+@app.post("/api/follow_bot/logs/clear")
+async def follow_bot_logs_clear():
+    if FOLLOW_LOG_FILE.exists():
+        FOLLOW_LOG_FILE.write_text("")
+    return {"status": "ok"}
+
 @app.get("/api/share_bot/status")
 async def share_bot_status():
     return {"calisiyor": _bot_calisiyor(SHARE_PID_FILE)}
@@ -285,6 +297,12 @@ async def share_bot_logs(satirlar: int = 150):
     with open(SHARE_LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()[-satirlar:]
     return {"satirlar": [l.rstrip() for l in lines]}
+
+@app.post("/api/share_bot/logs/clear")
+async def share_bot_logs_clear():
+    if SHARE_LOG_FILE.exists():
+        SHARE_LOG_FILE.write_text("")
+    return {"status": "ok"}
 
 # ---- Ortak Stats ----
 
