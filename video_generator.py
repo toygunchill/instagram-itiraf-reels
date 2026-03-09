@@ -75,6 +75,7 @@ class VideoGenerator:
         self,
         metin: str,
         gonderen: str,
+        admin_reply: str,
         frame_no: int,
         toplam_frame: int,
     ) -> np.ndarray:
@@ -84,18 +85,84 @@ class VideoGenerator:
         self._ciz_header(draw)
         self._ciz_ust_bilgi(draw)
 
-        # Yazi animasyonu: ilk 60 frame'de karakter karakter goster
-        anim_frame = 60
-        if frame_no < anim_frame:
-            gosterilen_uzunluk = max(1, int(len(metin) * frame_no / anim_frame))
-            gosterilen_metin = metin[:gosterilen_uzunluk]
-        else:
-            gosterilen_metin = metin
+        # Animasyon zamanlaması
+        # 0-60: İtiraf yazılıyor
+        # 60-120: İtiraf duruyor
+        # 120-180: Admin cevabı yazılıyor (varsa)
+        
+        anim_itiraf = 60
+        itiraf_metni = metin
+        if frame_no < anim_itiraf:
+            len_i = max(1, int(len(metin) * frame_no / anim_itiraf))
+            itiraf_metni = metin[:len_i]
+            
+        # İtiraf balonunu her zaman çiz (en azından ilk kısmı)
+        self._ciz_mesaj_balonu(draw, itiraf_metni, gonderen)
 
-        self._ciz_mesaj_balonu(draw, gosterilen_metin, gonderen)
+        # Admin cevabı varsa ve zamanı geldiyse çiz
+        if admin_reply and frame_no >= 120:
+            anim_admin = 60 # 120'den 180'e kadar
+            rel_frame = frame_no - 120
+            admin_metni = admin_reply
+            if rel_frame < anim_admin:
+                len_a = max(1, int(len(admin_reply) * rel_frame / anim_admin))
+                admin_metni = admin_reply[:len_a]
+            
+            # İtiraf balonunun altına admin balonunu çiz
+            # Mesaj balonunun yüksekliğini hesaplamamız lazım (veya sabit bir offset kullanabiliriz)
+            # Şimdilik _ciz_mesaj_balonu içinde y koordinatını döndürelim veya parametre yapalım.
+            itiraf_y1 = 230 + (len(_metin_sar(metin, 32)) * 46 + 50)
+            self._ciz_admin_balonu(draw, admin_metni, itiraf_y1 + 60)
+
         self._ciz_input_bar(draw)
 
         return np.array(img)
+
+    # -------------------------------------------------------
+    def _ciz_admin_balonu(self, draw: ImageDraw.ImageDraw, metin: str, y_offset: int):
+        margin = 40
+        max_balon_genislik = int(VIDEO_GENISLIK * 0.75)
+        satir_yukseklik = 46
+
+        satirlar = _metin_sar(metin, max_karakter=32)
+
+        # Balon boyutunu hesapla
+        en_uzun = max((draw.textbbox((0, 0), s, font=self.f_metin)[2] for s in satirlar), default=100)
+        balon_genislik = min(en_uzun + 60, max_balon_genislik)
+        balon_yukseklik = len(satirlar) * satir_yukseklik + 50
+
+        # Sağ tarafa yasla (Mavi balon tarzı)
+        balon_x1 = VIDEO_GENISLIK - margin
+        balon_x0 = balon_x1 - balon_genislik
+        balon_y0 = y_offset
+        balon_y1 = balon_y0 + balon_yukseklik
+
+        # Admin etiketi (sağ üst)
+        draw.text(
+            (balon_x0 + 8, balon_y0 - 30),
+            self.sayfa_adi,
+            font=self.f_gonderen,
+            fill=RENKLER["mavi"],
+        )
+
+        # Balon (Mavi/Accent rengi arka plan)
+        _yuvarlatilmis_dikdortgen(
+            draw,
+            (balon_x0, balon_y0, balon_x1, balon_y1),
+            radius=22,
+            fill=(0, 70, 150), # Koyu mavi
+            outline=RENKLER["mavi"],
+            outline_width=1,
+        )
+
+        # Metin satirlari
+        for i, satir in enumerate(satirlar):
+            draw.text(
+                (balon_x0 + 24, balon_y0 + 18 + i * satir_yukseklik),
+                satir,
+                font=self.f_metin,
+                fill=RENKLER["beyaz"],
+            )
 
     # -------------------------------------------------------
     def _ciz_header(self, draw: ImageDraw.ImageDraw):
@@ -231,10 +298,11 @@ class VideoGenerator:
         gonderen: str,
         kategori: str,
         cikti_yolu: str,
+        admin_reply: str = None,
     ) -> str:
         print(f"  Frameler olusturuluyor ({TOPLAM_FRAME} adet)...")
         frameler = [
-            self.frame_olustur(metin, gonderen, i, TOPLAM_FRAME)
+            self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME)
             for i in range(TOPLAM_FRAME)
         ]
 

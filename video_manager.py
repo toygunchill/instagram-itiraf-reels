@@ -29,6 +29,7 @@ def video_ekle(
     caption: str,
     gonderen: str,
     planlanan_paylasim: str = None,
+    admin_reply: str = None,
 ):
     meta = meta_yukle()
     meta[video_id] = {
@@ -38,6 +39,7 @@ def video_ekle(
         "kategori": kategori,
         "caption": caption,
         "gonderen": gonderen,
+        "admin_reply": admin_reply,
         "durum": "bekliyor",
         "olusturulma": datetime.now().isoformat(),
         "paylasim_zamani": None,

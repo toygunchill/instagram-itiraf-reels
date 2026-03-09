@@ -460,6 +460,7 @@
               </span>
             </div>
             <div class="itiraf-metin">${escHtml(v.itiraf)}</div>
+            ${v.admin_reply ? `<div class="itiraf-metin" style="color: var(--accent); margin-top: -4px;"><b>Admin:</b> ${escHtml(v.admin_reply)}</div>` : ''}
             <div style="position: relative;">
               <div class="caption-metin" title="Paylaşım Metni">${escHtml(v.caption)}</div>
               <button class="kopyala-btn" onclick="kopyala('${escJs(v.caption)}')">Kopyala</button>
@@ -650,6 +651,20 @@
       if (r.ok) { toast('Uretim basladi'); document.getElementById('json-input').value = ''; }
       else { toast('Hata!', 'hata'); }
     } catch (_) { toast('Gecersiz JSON', 'hata'); }
+  }
+
+  function jsonOrnek() {
+    const ornek = {
+      "confessions": [
+        {
+          "persona": "anonim_birisi",
+          "theme": "iliski",
+          "text": "Buraya itiraf metni gelecek...",
+          "admin_reply": "Admin buraya cevap yazacak..."
+        }
+      ]
+    };
+    document.getElementById('json-input').value = JSON.stringify(ornek, null, 2);
   }
 
   function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

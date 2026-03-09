@@ -3,7 +3,7 @@ import random
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent / ".env", override=True)
 
 # Ortam degiskenleri
 IG_USERNAME = os.getenv("IG_USERNAME", "")
