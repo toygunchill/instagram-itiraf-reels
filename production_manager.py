@@ -109,21 +109,21 @@ class ProductionManager:
                 
                 # Claude ile duzenle
                 itiraf = claude.duzenle(raw_text)
-                kategori = tema_func(theme)
-                caption = claude.caption_uret(itiraf, kategori)
+                kategori_meta = tema_func(theme)
+                caption = claude.caption_uret(itiraf, kategori_meta)
                 
                 video_id = f"json_{int(datetime.now().timestamp())}_{i}"
                 video_adi = f"{video_id}.mp4"
                 video_yolu = str(output_dir / video_adi)
                 
-                self.log(f"  - Video üretiliyor ({kategori})...")
-                video_gen.video_olustur(itiraf, persona, kategori, video_yolu, admin_reply=admin_reply)
+                self.log(f"  - Video üretiliyor ({theme})...")
+                video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply)
                 
                 video_manager.video_ekle(
                     video_id=video_id,
                     dosya=video_adi,
                     itiraf=itiraf,
-                    kategori=kategori,
+                    kategori=kategori_meta,
                     caption=caption,
                     gonderen=persona,
                     planlanan_paylasim=plan_zamani,

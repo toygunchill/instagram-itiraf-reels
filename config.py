@@ -47,13 +47,49 @@ RENKLER = {
     "kirmizi_nokta": (255, 80, 80),
 }
 
-# Kategori -> muzik alt klasoru
+# Theme -> Music Vibe Eşleşmesi (Prompt Madde 2)
+THEME_VIBES = {
+    "ilişki": ["romantic_tension", "lonely_night"],
+    "iliski": ["romantic_tension", "lonely_night"],
+    "cinsellik": ["romantic_tension"],
+    "aldatma": ["guilty_feeling"],
+    "yalnızlık": ["lonely_night"],
+    "yalnizlik": ["lonely_night"],
+    "pişmanlık": ["guilty_feeling"],
+    "pismanlik": ["guilty_feeling"],
+    "kıskançlık": ["romantic_tension"],
+    "kiskanclik": ["romantic_tension"],
+    "öfke": ["secret_confession"],
+    "ofke": ["secret_confession"],
+    "merak": ["secret_confession"],
+    "özsaygı": ["lonely_night"],
+    "ozsaygi": ["lonely_night"],
+    "iş hayatı": ["secret_confession"],
+    "is hayati": ["secret_confession"],
+    "is": ["secret_confession"],
+    "genel": ["midnight_thoughts", "lonely_night"]
+}
+
+# Fallback Vibe Havuzu (Prompt Madde 3)
+FALLBACK_VIBES = ["lonely_night", "secret_confession", "romantic_tension", "guilty_feeling", "midnight_thoughts"]
+
+# Vibe -> Arama Sorguları (Prompt Madde 4)
+VIBE_QUERIES = {
+    "lonely_night": ["sad lofi night", "midnight lofi", "lonely ambient"],
+    "secret_confession": ["dark ambient background", "mysterious ambient"],
+    "romantic_tension": ["slow romantic beat", "soft trap love instrumental"],
+    "guilty_feeling": ["sad emotional piano", "dramatic piano ambient"],
+    "midnight_thoughts": ["late night lofi", "deep thought ambient"]
+}
+
+# Kategori -> muzik alt klasoru (Vibe bazlı klasör yapısı için güncellendi)
 KATEGORI_MUZIK = {
-    "iliski": "iliski",
-    "aile": "aile",
-    "is": "is",
-    "arkadaslik": "arkadaslik",
-    "genel": "genel",
+    "romantic_tension": "romantic_tension",
+    "lonely_night": "lonely_night",
+    "guilty_feeling": "guilty_feeling",
+    "secret_confession": "secret_confession",
+    "midnight_thoughts": "midnight_thoughts",
+    "genel": "genel"
 }
 
 # Anonim kullanici adi uretici
@@ -95,15 +131,31 @@ def tema_donustur(tema: str) -> str:
     return TEMA_HARITASI.get(tema.lower().strip(), "genel")
 
 
-def muzik_sec(kategori: str) -> str | None:
-    """Kategoriye gore muzik klasorunden rastgele bir .mp3 sec."""
-    alt_klasor = KATEGORI_MUZIK.get(kategori, "genel")
+def muzik_sec(tema: str) -> str | None:
+    """Tema'ya göre uygun Vibe seçer ve o klasörden rastgele müzik döndürür."""
+    # 1. Theme Analizi (Prompt Madde 1)
+    tema_key = tema.lower().strip()
+    
+    # 2. Theme -> Vibe Eşleşmesi (Prompt Madde 2)
+    vibe_listesi = THEME_VIBES.get(tema_key)
+    
+    # 3. Fallback (Prompt Madde 3)
+    if not vibe_listesi:
+        vibe = random.choice(FALLBACK_VIBES)
+    else:
+        vibe = random.choice(vibe_listesi)
+    
+    # Kategori klasörü
+    alt_klasor = KATEGORI_MUZIK.get(vibe, "genel")
     klasor = MUZIK_DIR / alt_klasor
-    if not klasor.exists():
-        klasor = MUZIK_DIR
+    
+    # Müzik seçimi
     dosyalar = list(klasor.glob("*.mp3"))
     if not dosyalar:
+        # Eğer alt klasör boşsa ana müzik klasörüne bak
         dosyalar = list(MUZIK_DIR.glob("*.mp3"))
+        
     if not dosyalar:
         return None
+        
     return str(random.choice(dosyalar))

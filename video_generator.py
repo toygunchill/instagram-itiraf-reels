@@ -313,7 +313,8 @@ class VideoGenerator:
         if muzik_yolu:
             print(f"  Muzik ekleniyor: {muzik_yolu}")
             try:
-                ses = AudioFileClip(muzik_yolu).subclipped(0, VIDEO_SURE)
+                # Prompt Madde 6: Konuşma yoksa volume = 0.20
+                ses = AudioFileClip(muzik_yolu).subclipped(0, VIDEO_SURE).with_volume_scaled(0.20)
                 klip = klip.with_audio(ses)
             except Exception as e:
                 print(f"  Muzik eklenemedi: {e}")
