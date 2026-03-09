@@ -18,15 +18,18 @@ except ImportError:
 
 # ---- Font yardimcilari ----
 
-def _font_yukle(boyut: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def _font_yukle(boyut: int, emoji: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Sistemde bulunan ilk uygun fontu yükler."""
-    adaylar = [
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/System/Library/Fonts/Arial.ttf",
-        "/Library/Fonts/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    ]
+    if emoji:
+        adaylar = ["/System/Library/Fonts/Apple Color Emoji.ttc"]
+    else:
+        adaylar = [
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/System/Library/Fonts/Arial.ttf",
+            "/Library/Fonts/Arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        ]
     for yol in adaylar:
         if os.path.exists(yol):
             try:
@@ -66,6 +69,7 @@ class VideoGenerator:
         self.f_baslik = _font_yukle(32)
         self.f_kucuk = _font_yukle(26)
         self.f_metin = _font_yukle(36)
+        self.f_emoji = _font_yukle(36, emoji=True) # Emoji için özel font
         self.f_gonderen = _font_yukle(24)
         self.f_saat = _font_yukle(22)
         self.f_input = _font_yukle(30)
@@ -85,32 +89,27 @@ class VideoGenerator:
         self._ciz_header(draw)
         self._ciz_ust_bilgi(draw)
 
-        # Animasyon zamanlaması
-        # 0-60: İtiraf yazılıyor
-        # 60-120: İtiraf duruyor
-        # 120-180: Admin cevabı yazılıyor (varsa)
+        # Animasyon zamanlaması (YAVAŞLATILDI)
+        # 0-120: İtiraf yazılıyor (Önce 60'tı, hızı yarıya düşürdük)
+        # 120-180: Bekleme
+        # 180-300: Admin cevabı yazılıyor (varsa)
         
-        anim_itiraf = 60
+        anim_itiraf = 120
         itiraf_metni = metin
         if frame_no < anim_itiraf:
             len_i = max(1, int(len(metin) * frame_no / anim_itiraf))
             itiraf_metni = metin[:len_i]
             
-        # İtiraf balonunu her zaman çiz (en azından ilk kısmı)
         self._ciz_mesaj_balonu(draw, itiraf_metni, gonderen)
 
-        # Admin cevabı varsa ve zamanı geldiyse çiz
-        if admin_reply and frame_no >= 120:
-            anim_admin = 60 # 120'den 180'e kadar
-            rel_frame = frame_no - 120
+        if admin_reply and frame_no >= 180:
+            anim_admin = 120 # 180'den 300'e kadar (YAVAŞLATILDI)
+            rel_frame = frame_no - 180
             admin_metni = admin_reply
             if rel_frame < anim_admin:
                 len_a = max(1, int(len(admin_reply) * rel_frame / anim_admin))
                 admin_metni = admin_reply[:len_a]
             
-            # İtiraf balonunun altına admin balonunu çiz
-            # Mesaj balonunun yüksekliğini hesaplamamız lazım (veya sabit bir offset kullanabiliriz)
-            # Şimdilik _ciz_mesaj_balonu içinde y koordinatını döndürelim veya parametre yapalım.
             itiraf_y1 = 230 + (len(_metin_sar(metin, 32)) * 46 + 50)
             self._ciz_admin_balonu(draw, admin_metni, itiraf_y1 + 60)
 
@@ -157,11 +156,13 @@ class VideoGenerator:
 
         # Metin satirlari
         for i, satir in enumerate(satirlar):
+            # Pillow'un modern versiyonları Apple Color Emoji ile emoji basabilir
             draw.text(
                 (balon_x0 + 24, balon_y0 + 18 + i * satir_yukseklik),
                 satir,
-                font=self.f_metin,
-                fill=RENKLER["beyaz"],
+                font=self.f_emoji if any(ord(c) > 0xFFFF for c in satir) else self.f_metin,
+                fill=RENKLER["beyaz"] if not any(ord(c) > 0xFFFF for c in satir) else None,
+                embedded_color=True
             )
 
     # -------------------------------------------------------
@@ -240,11 +241,13 @@ class VideoGenerator:
 
         # Metin satirlari
         for i, satir in enumerate(satirlar):
+            # Pillow'un modern versiyonları Apple Color Emoji ile emoji basabilir
             draw.text(
                 (balon_x0 + 24, balon_y0 + 18 + i * satir_yukseklik),
                 satir,
-                font=self.f_metin,
-                fill=RENKLER["beyaz"],
+                font=self.f_emoji if any(ord(c) > 0xFFFF for c in satir) else self.f_metin,
+                fill=RENKLER["beyaz"] if not any(ord(c) > 0xFFFF for c in satir) else None,
+                embedded_color=True
             )
 
         # Saat etiketi
