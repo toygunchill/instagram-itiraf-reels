@@ -9,17 +9,15 @@ from config import (
     TOPLAM_FRAME, RENKLER, OUTPUT_DIR, PAGE_NAME, muzik_sec,
 )
 
-# moviepy import (eski ve yeni API uyumu)
 try:
-    from moviepy import ImageSequenceClip, AudioFileClip, CompositeAudioClip
+    from moviepy import ImageSequenceClip, AudioFileClip
 except ImportError:
-    from moviepy.editor import ImageSequenceClip, AudioFileClip, CompositeAudioClip
+    from moviepy.editor import ImageSequenceClip, AudioFileClip
 
 
 # ---- Font yardimcilari ----
 
 def _font_yukle(boyut: int, emoji: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    """Sistemde bulunan ilk uygun fontu yükler."""
     if emoji:
         adaylar = ["/System/Library/Fonts/Apple Color Emoji.ttc"]
     else:
@@ -28,7 +26,6 @@ def _font_yukle(boyut: int, emoji: bool = False) -> ImageFont.FreeTypeFont | Ima
             "/System/Library/Fonts/Arial.ttf",
             "/Library/Fonts/Arial.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         ]
     for yol in adaylar:
         if os.path.exists(yol):
@@ -39,183 +36,136 @@ def _font_yukle(boyut: int, emoji: bool = False) -> ImageFont.FreeTypeFont | Ima
     return ImageFont.load_default()
 
 
-# ---- Cizim yardimcilari ----
-
-def _yuvarlatilmis_dikdortgen(
-    draw: ImageDraw.ImageDraw,
-    xy: tuple,
-    radius: int,
-    fill: tuple,
-    outline: tuple | None = None,
-    outline_width: int = 1,
-):
-    x0, y0, x1, y1 = xy
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=fill,
-                            outline=outline, width=outline_width)
+def _yuvarlatilmis_dikdortgen(draw, xy, radius, fill, outline=None):
+    draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=2)
 
 
 def _metin_sar(metin: str, max_karakter: int = 32) -> list[str]:
-    satirlar = []
     if not metin: return [""]
+    satirlar = []
     for paragraf in metin.split("\n"):
         wrapped = textwrap.wrap(paragraf, width=max_karakter, break_long_words=False, replace_whitespace=False)
-        if wrapped:
-            satirlar.extend(wrapped)
-        else:
-            satirlar.append("")
+        satirlar.extend(wrapped if wrapped else [""])
     return satirlar
 
-
-# ---- Ana frame uretici ----
 
 class VideoGenerator:
     def __init__(self, sayfa_adi: str = "gizli_itiraf_edenler"):
         self.sayfa_adi = sayfa_adi
-        self.f_baslik = _font_yukle(32)
+        self.f_baslik = _font_yukle(34)
         self.f_kucuk = _font_yukle(26)
-        self.f_metin = _font_yukle(36)
-        self.f_emoji = _font_yukle(36, emoji=True)
-        self.f_gonderen = _font_yukle(24)
+        self.f_metin = _font_yukle(38)
+        self.f_emoji = _font_yukle(38, emoji=True)
+        self.f_gonderen = _font_yukle(26)
         self.f_saat = _font_yukle(22)
         self.f_input = _font_yukle(30)
 
-    def frame_olustur(
-        self,
-        metin: str,
-        gonderen: str,
-        admin_reply: str,
-        frame_no: int,
-        toplam_frame: int,
-    ) -> np.ndarray:
+    def _get_text_width(self, draw, text):
+        """Karakter bazlı genişlik ölçümü (Emoji + Latin karma)."""
+        w = 0
+        for char in text:
+            f = self.f_emoji if ord(char) > 0xFFFF else self.f_metin
+            bbox = draw.textbbox((0, 0), char, font=f, embedded_color=True)
+            w += (bbox[2] - bbox[0])
+        return w
+
+    def _draw_mixed_text(self, draw, xy, text, is_admin=False):
+        """Harf harf font seçerek çizim yapar (Kutucuk sorununu çözer)."""
+        x, y = xy
+        for char in text:
+            is_e = ord(char) > 0xFFFF
+            f = self.f_emoji if is_e else self.f_metin
+            color = None if is_e else RENKLER["beyaz"]
+            draw.text((x, y), char, font=f, fill=color, embedded_color=True)
+            bbox = draw.textbbox((0, 0), char, font=f, embedded_color=True)
+            x += (bbox[2] - bbox[0])
+
+    def frame_olustur(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
         img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), RENKLER["arka_plan"])
         draw = ImageDraw.Draw(img)
 
         self._ciz_header(draw)
         self._ciz_ust_bilgi(draw)
 
-        # Animasyon zamanlaması (FPS=30)
-        # 0-150: İtiraf yazılıyor (5sn) - Daha yavaş
-        # 150-180: Bekleme (1sn)
-        # 180-225: Admin cevabı yazılıyor (1.5sn) - DAHA SERİ
-        
-        anim_itiraf = 150
-        itiraf_uzunluk = len(metin)
-        if frame_no < anim_itiraf:
-            len_i = max(1, int(itiraf_uzunluk * frame_no / anim_itiraf))
-            itiraf_gosterilen = metin[:len_i]
-        else:
-            itiraf_gosterilen = metin
-            
-        # İtiraf balonunu çiz
-        y1_confession = self._ciz_balon(draw, itiraf_gosterilen, gonderen, 230, metin, is_admin=False)
+        # HIZ AYARLARI
+        anim_itiraf = 150 # 5sn
+        it_gost = metin[:max(1, int(len(metin) * frame_no / anim_itiraf))] if frame_no < anim_itiraf else metin
+        y1_conf = self._ciz_balon(draw, it_gost, gonderen, 230, metin, is_admin=False)
 
         if admin_reply and frame_no >= 180:
-            anim_admin = 45 # 1.5 saniyede bitsin (HIZLI)
-            rel_frame = frame_no - 180
-            admin_uzunluk = len(admin_reply)
-            if rel_frame < anim_admin:
-                len_a = max(1, int(admin_uzunluk * rel_frame / anim_admin))
-                admin_gosterilen = admin_reply[:len_a]
-            else:
-                admin_gosterilen = admin_reply
-            
-            self._ciz_balon(draw, admin_gosterilen, self.sayfa_adi, y1_confession + 60, admin_reply, is_admin=True)
+            anim_admin = 45 # 1.5sn (HIZLI)
+            rel_f = frame_no - 180
+            ad_gost = admin_reply[:max(1, int(len(admin_reply) * rel_f / anim_admin))] if rel_f < anim_admin else admin_reply
+            self._ciz_balon(draw, ad_gost, self.sayfa_adi, y1_conf + 70, admin_reply, is_admin=True)
 
         self._ciz_input_bar(draw)
         return np.array(img)
 
-    def _ciz_header(self, draw: ImageDraw.ImageDraw):
-        draw.rectangle([0, 0, VIDEO_GENISLIK, 130], fill=RENKLER["header_bg"])
-        draw.text((28, 50), "<", font=self.f_baslik, fill=RENKLER["beyaz"])
-        cx, cy, r = 120, 65, 36
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=RENKLER["profil_daire"])
-        harf = self.sayfa_adi[0].upper() if self.sayfa_adi else "G"
-        bbox = draw.textbbox((0, 0), harf, font=self.f_baslik)
-        hw, hh = (bbox[2] - bbox[0]) // 2, (bbox[3] - bbox[1]) // 2
-        draw.text((cx - hw, cy - hh - 2), harf, font=self.f_baslik, fill=RENKLER["beyaz"])
-        draw.text((172, 35), self.sayfa_adi, font=self.f_baslik, fill=RENKLER["beyaz"])
-        draw.text((172, 75), "Aktif", font=self.f_kucuk, fill=RENKLER["gri_acik"])
-        draw.text((VIDEO_GENISLIK - 110, 45), "[]", font=self.f_baslik, fill=RENKLER["gri_acik"])
-        draw.text((VIDEO_GENISLIK - 55, 45), "o", font=self.f_baslik, fill=RENKLER["gri_acik"])
-        draw.line([0, 130, VIDEO_GENISLIK, 130], fill=RENKLER["gri_koyu"], width=1)
+    def _ciz_balon(self, draw, gosterilen_metin, etiket, y0, tam_metin, is_admin=False):
+        margin = 45
+        max_w = int(VIDEO_GENISLIK * 0.75)
+        line_h = 50
 
-    def _ciz_ust_bilgi(self, draw: ImageDraw.ImageDraw):
-        metin = "Bugün"
-        bbox = draw.textbbox((0, 0), metin, font=self.f_saat)
-        w = bbox[2] - bbox[0]
-        draw.text(((VIDEO_GENISLIK - w) // 2, 155), metin, font=self.f_saat, fill=RENKLER["gri_orta"])
-
-    def _ciz_balon(self, draw: ImageDraw.ImageDraw, gosterilen_metin: str, etiket: str, y0: int, tam_metin: str, is_admin: bool = False) -> int:
-        margin = 40
-        max_balon_genislik = int(VIDEO_GENISLIK * 0.75)
-        satir_yukseklik = 46
-
-        # BOYUT SABİTLEME: Sarma işlemini her zaman TAM METİN üzerinden yapıyoruz
-        satirlar_iskelet = _metin_sar(tam_metin, max_karakter=30)
-        
-        # Balon boyutunu iskelete göre hesapla (Değişmez)
-        en_uzun = max((draw.textbbox((0, 0), s, font=self.f_metin)[2] for s in satirlar_iskelet), default=100)
-        balon_genislik = min(en_uzun + 60, max_balon_genislik)
-        balon_yukseklik = len(satirlar_iskelet) * satir_yukseklik + 50
+        # Boyutu en baştan TAM METNE göre sabitliyoruz
+        satirlar_iskelet = _metin_sar(tam_metin, max_karakter=28)
+        balon_w = min(max((self._get_text_width(draw, s) for s in satirlar_iskelet), default=100) + 60, max_w)
+        balon_h = len(satirlar_iskelet) * line_h + 55
 
         if is_admin:
-            balon_x1 = VIDEO_GENISLIK - margin
-            balon_x0 = balon_x1 - balon_genislik
-            fill_color = (0, 70, 150)
-            outline_color = RENKLER["mavi"]
-            label_color = RENKLER["mavi"]
+            x1 = VIDEO_GENISLIK - margin
+            x0 = x1 - balon_w
+            fill, outline = (10, 80, 180), (30, 120, 255)
+            # Etiketi sağa yasla
+            label_w = draw.textbbox((0,0), etiket, font=self.f_gonderen)[2]
+            draw.text((x1 - label_w - 5, y0 - 35), etiket, font=self.f_gonderen, fill=RENKLER["mavi"])
         else:
-            balon_x0 = margin
-            balon_x1 = balon_x0 + balon_genislik
-            fill_color = RENKLER["balon_bg"]
-            outline_color = RENKLER["balon_kenarlik"]
-            label_color = RENKLER["gri_acik"]
+            x0, x1 = margin, margin + balon_w
+            fill, outline = RENKLER["balon_bg"], RENKLER["balon_kenarlik"]
+            draw.text((x0 + 5, y0 - 35), etiket, font=self.f_gonderen, fill=RENKLER["gri_acik"])
 
-        balon_y1 = y0 + balon_yukseklik
+        y1 = y0 + balon_h
+        _yuvarlatilmis_dikdortgen(draw, (x0, y0, x1, y1), 25, fill, outline)
 
-        # Etiket
-        draw.text((balon_x0 + 8, y0 - 30), etiket, font=self.f_gonderen, fill=label_color)
-        
-        # Balon Arka Plan
-        _yuvarlatilmis_dikdortgen(draw, (balon_x0, y0, balon_x1, balon_y1), radius=22, fill=fill_color, outline=outline_color)
-
-        # Yazı Çizimi (Karakter karakter dolma)
-        current_len = 0
-        target_len = len(gosterilen_metin)
-        
+        # Yazıyı satır satır ve karakter karakter çiz
+        curr_idx = 0
+        target_idx = len(gosterilen_metin)
         for i, satir in enumerate(satirlar_iskelet):
-            if current_len >= target_len: break
-            
-            # Bu satırda kaç karakter göstereceğiz?
-            kalan = target_len - current_len
-            cizilecek_satir = satir[:kalan]
-            current_len += len(satir) + 1 # +1 for the space/newline logic of wrap
-            
-            is_emoji = any(ord(c) > 0xFFFF for c in cizilecek_satir)
-            draw.text(
-                (balon_x0 + 24, y0 + 18 + i * satir_yukseklik),
-                cizilecek_satir,
-                font=self.f_emoji if is_emoji else self.f_metin,
-                fill=RENKLER["beyaz"] if not is_emoji else None,
-                embedded_color=True
-            )
+            if curr_idx >= target_idx: break
+            line_to_draw = satir[:target_idx - curr_idx]
+            self._draw_mixed_text(draw, (x0 + 28, y0 + 22 + i * line_h), line_to_draw, is_admin)
+            curr_idx += len(satir) + 1
 
         if not is_admin:
-            draw.text((balon_x0 + 8, balon_y1 + 8), "13:37", font=self.f_saat, fill=RENKLER["gri_koyu"])
-        
-        return balon_y1
+            draw.text((x0 + 5, y1 + 8), "13:37", font=self.f_saat, fill=RENKLER["gri_koyu"])
+        return y1
 
-    def _ciz_input_bar(self, draw: ImageDraw.ImageDraw):
-        bar_y = VIDEO_YUKSEKLIK - 130
-        draw.rectangle([0, bar_y - 10, VIDEO_GENISLIK, VIDEO_YUKSEKLIK], fill=RENKLER["header_bg"])
-        _yuvarlatilmis_dikdortgen(draw, (24, bar_y, VIDEO_GENISLIK - 109, bar_y + 80), radius=40, fill=RENKLER["input_bg"], outline=RENKLER["input_kenarlik"])
-        draw.text((52, bar_y + 20), "Bir mesaj yazin...", font=self.f_input, fill=RENKLER["gri_koyu"])
-        btn_cx, btn_cy = VIDEO_GENISLIK - 59, bar_y + 40
-        draw.ellipse([btn_cx - 36, btn_cy - 36, btn_cx + 36, btn_cy + 36], fill=RENKLER["mavi"])
-        draw.text((btn_cx - 10, btn_cy - 16), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
+    def _ciz_header(self, draw):
+        draw.rectangle([0, 0, VIDEO_GENISLIK, 135], fill=RENKLER["header_bg"])
+        draw.text((30, 50), "<", font=self.f_baslik, fill=RENKLER["beyaz"])
+        cx, cy, r = 125, 68, 38
+        draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=RENKLER["profil_daire"])
+        harf = self.sayfa_adi[0].upper()
+        bbox = draw.textbbox((0,0), harf, font=self.f_baslik)
+        draw.text((cx-(bbox[2]-bbox[0])//2, cy-(bbox[3]-bbox[1])//2-2), harf, font=self.f_baslik, fill=RENKLER["beyaz"])
+        draw.text((185, 38), self.sayfa_adi, font=self.f_baslik, fill=RENKLER["beyaz"])
+        draw.text((185, 80), "Aktif", font=self.f_kucuk, fill=RENKLER["gri_acik"])
+        draw.line([0, 135, VIDEO_GENISLIK, 135], fill=RENKLER["gri_koyu"], width=1)
 
-    def video_olustur(self, metin: str, gonderen: str, kategori: str, cikti_yolu: str, admin_reply: str = None) -> str:
-        print(f"  Frameler olusturuluyor...")
+    def _ciz_ust_bilgi(self, draw):
+        bbox = draw.textbbox((0,0), "Bugün", font=self.f_saat)
+        draw.text(((VIDEO_GENISLIK-(bbox[2]-bbox[0]))//2, 165), "Bugün", font=self.f_saat, fill=RENKLER["gri_orta"])
+
+    def _ciz_input_bar(self, draw):
+        y = VIDEO_YUKSEKLIK - 130
+        draw.rectangle([0, y - 10, VIDEO_GENISLIK, VIDEO_YUKSEKLIK], fill=RENKLER["header_bg"])
+        _yuvarlatilmis_dikdortgen(draw, (25, y, VIDEO_GENISLIK - 115, y + 85), 42, RENKLER["input_bg"], RENKLER["input_kenarlik"])
+        draw.text((55, y + 22), "Bir mesaj yazin...", font=self.f_input, fill=RENKLER["gri_koyu"])
+        btn_cx, btn_cy = VIDEO_GENISLIK - 65, y + 42
+        draw.ellipse([btn_cx-38, btn_cy-38, btn_cx+38, btn_cy+38], fill=RENKLER["mavi"])
+        draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
+
+    def video_olustur(self, metin, gonderen, kategori, cikti_yolu, admin_reply=None):
+        print("  Video üretiliyor...")
         frameler = [self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
         muzik_yolu = muzik_sec(kategori)
@@ -223,6 +173,6 @@ class VideoGenerator:
             try:
                 ses = AudioFileClip(muzik_yolu).subclipped(0, VIDEO_SURE).with_volume_scaled(0.20)
                 klip = klip.with_audio(ses)
-            except Exception: pass
+            except: pass
         klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
         return cikti_yolu
