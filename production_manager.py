@@ -94,7 +94,18 @@ class ProductionManager:
 
                 self.log(f"[{i+1}/{self.total_count}] İşleniyor: {raw_text[:30]}...")
                 
-                # ... (Gece koruması ve planlama mantığı aynı kalıyor) ...
+                # Paylaşım Aralığı: 1 saat (3600 sn) ile 1.5 saat (5400 sn) arası rastgele ekle
+                if i > 0: # İlk video hemen, diğerleri aralıklı
+                    import random # Güvenlik için burada da olsun
+                    interval = random.randint(3600, 5400)
+                    current_time += timedelta(seconds=interval)
+                
+                # Gece Koruması: 02:00 - 07:00 arasını kontrol et
+                if 2 <= current_time.hour < 7:
+                    self.log(f"  - Gece koruması: {current_time.strftime('%H:%M')} saati sabah 07:00 sonrasına erteleniyor.")
+                    current_time = current_time.replace(hour=7, minute=random.randint(0, 30), second=0)
+                
+                plan_zamani = current_time.isoformat()
                 
                 # Claude ile duzenle
                 itiraf = claude.duzenle(raw_text)
