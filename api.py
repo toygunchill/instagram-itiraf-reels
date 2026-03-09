@@ -341,6 +341,51 @@ async def follow_stats():
         return {"followed": 0, "unfollowed": 0, "followers": follower_count, "following": following_count}
 
 
+@app.get("/api/config")
+async def get_config():
+    from config import PAGE_NAME
+    return {"page_name": PAGE_NAME}
+
+@app.post("/api/config/update")
+async def update_config(request: Request):
+    data = await request.json()
+    new_page_name = data.get("page_name")
+    if not new_page_name:
+        raise HTTPException(status_code=400, detail="Sayfa adi bos olamaz")
+    
+    # .env dosyasını güncelle
+    env_path = BASE_DIR / ".env"
+    lines = []
+    if env_path.exists():
+        with open(env_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    
+    found = False
+    new_lines = []
+    for line in lines:
+        if line.startswith("PAGE_NAME="):
+            new_lines.append(f"PAGE_NAME={new_page_name}\n")
+            found = True
+        else:
+            new_lines.append(line)
+    
+    if not found:
+        new_lines.append(f"PAGE_NAME={new_page_name}\n")
+    
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+    
+    # Global değişkeni ve video generator'ı güncelle
+    import config
+    import importlib
+    importlib.reload(config)
+    
+    global video_gen
+    from config import PAGE_NAME as NEW_PAGE_NAME
+    video_gen.sayfa_adi = NEW_PAGE_NAME
+    
+    return {"status": "ok", "new_page_name": NEW_PAGE_NAME}
+
 
 if __name__ == "__main__":
     import uvicorn
