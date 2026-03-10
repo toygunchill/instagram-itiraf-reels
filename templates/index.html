@@ -243,10 +243,12 @@
 
 <div class="tabs">
   <div class="tab aktif" onclick="sekme('videolar', this)">Videolar <span id="video-sayac"></span></div>
+  <div class="tab" onclick="sekme('tekli', this)">Tekli Üret</div>
   <div class="tab" onclick="sekme('hizli', this)">Hızlı Üret (JSON)</div>
   <div class="tab" onclick="sekme('bot-share', this)">Paylaşım Botu</div>
   <div class="tab" onclick="sekme('bot-dm', this)">DM Botu</div>
   <div class="tab" onclick="sekme('bot-follow', this)">Takip Botu</div>
+  <div class="tab" onclick="sekme('ayarlar', this)">Ayarlar</div>
 </div>
 
 <main>
@@ -284,6 +286,49 @@
     </div>
     <div class="video-grid" id="video-grid">
       <div class="bos-mesaj">Yukleniyor...</div>
+    </div>
+  </div>
+
+  <!-- === Tekli Üret === -->
+  <div class="panel" id="panel-tekli">
+    <div class="kutu">
+      <div class="kutu-baslik">Tekli Video Üret ve Paylaş</div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+        <div>
+          <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">Persona (Kim gönderdi?)</label>
+          <input type="text" id="single-persona" placeholder="Örn: 25 yaşında kadın (Boş bırakılırsa anonim üretilir)" style="width: 100%; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">Tema (Müzik seçimi için)</label>
+          <select id="single-theme" style="width: 100%; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
+            <option value="genel">Genel</option>
+            <option value="ilişki">İlişki</option>
+            <option value="cinsellik">Cinsellik</option>
+            <option value="aldatma">Aldatma</option>
+            <option value="yalnızlık">Yalnızlık</option>
+            <option value="pişmanlık">Pişmanlık</option>
+            <option value="iş hayatı">İş Hayatı</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">İtiraf Metni</label>
+        <textarea id="single-text" placeholder="İtirafı buraya yazın..." style="width: 100%; height: 100px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;"></textarea>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">Admin Cevabı</label>
+        <textarea id="single-admin-reply" placeholder="Admin olarak cevabınız (Emoji ekleyebilirsiniz)..." style="width: 100%; height: 60px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;"></textarea>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+        <input type="checkbox" id="single-share" checked style="width: 16px; height: 16px;">
+        <label for="single-share" style="font-size: 13px; color: var(--text);">Üretildikten sonra hemen Instagram'da paylaş</label>
+      </div>
+
+      <button class="btn btn-yesil" id="btn-single-start" onclick="tekliUret()" style="width: 200px; height: 40px;">Üretimi Başlat</button>
     </div>
   </div>
 
@@ -380,6 +425,19 @@
       </div>
       <div class="log-ekran" id="follow-log-ekran"></div>
     </div>
+  <!-- === Ayarlar === -->
+  <div class="panel" id="panel-ayarlar">
+    <div class="kutu">
+      <div class="kutu-baslik">Genel Ayarlar</div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 8px;">Video Chat Başlığı (Sayfa Adı)</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="config-page-name" placeholder="Örn: gizli_itiraf_edenler" style="width: 100%; max-width: 400px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
+          <button class="btn btn-yesil" onclick="configGuncelle()">Kaydet</button>
+        </div>
+        <p style="font-size: 11px; color: #555; margin-top: 8px;">Bu başlık, üretilen videolarda chat penceresinin üstünde görünür.</p>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -410,7 +468,36 @@
     } else if (id === 'hizli') {
       prodTimer = setInterval(prodDurumKontrol, 2000);
       prodDurumKontrol();
+    } else if (id === 'ayarlar') {
+      configYukle();
     }
+  }
+
+  // ---- Ayarlar ----
+  async function configYukle() {
+    try {
+      const r = await fetch('/api/config');
+      const d = await r.json();
+      document.getElementById('config-page-name').value = d.page_name || '';
+    } catch (_) {}
+  }
+
+  async function configGuncelle() {
+    const page_name = document.getElementById('config-page-name').value;
+    if (!page_name) return toast('Sayfa adı boş olamaz', 'hata');
+    
+    try {
+      const r = await fetch('/api/config/update', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page_name })
+      });
+      if (r.ok) {
+        toast('Ayarlar güncellendi');
+        botDurumKontrol(); // Header'daki ismi de dolaylı etkileyebilir
+      } else {
+        toast('Güncelleme hatası', 'hata');
+      }
+    } catch (e) { toast(e.message, 'hata'); }
   }
 
   // ---- Toast ----
@@ -651,6 +738,41 @@
       if (r.ok) { toast('Uretim basladi'); document.getElementById('json-input').value = ''; }
       else { toast('Hata!', 'hata'); }
     } catch (_) { toast('Gecersiz JSON', 'hata'); }
+  }
+
+  async function tekliUret() {
+    const text = document.getElementById('single-text').value;
+    const persona = document.getElementById('single-persona').value;
+    const theme = document.getElementById('single-theme').value;
+    const admin_reply = document.getElementById('single-admin-reply').value;
+    const share = document.getElementById('single-share').checked;
+
+    if (!text) return toast('Metin boş olamaz!', 'hata');
+
+    const btn = document.getElementById('btn-single-start');
+    btn.disabled = true;
+    btn.textContent = 'İşlem Başlatıldı...';
+
+    try {
+      const r = await fetch('/api/generate_single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, persona, theme, admin_reply, share })
+      });
+      
+      if (r.ok) {
+        toast('İşlem arka planda başlatıldı. Videolar sekmesinden takip edebilirsiniz.');
+        document.getElementById('single-text').value = '';
+        document.getElementById('single-admin-reply').value = '';
+      } else {
+        toast('Bir hata oluştu!', 'hata');
+      }
+    } catch (e) {
+      toast(e.message, 'hata');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Üretimi Başlat';
+    }
   }
 
   function jsonOrnek() {

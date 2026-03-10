@@ -387,6 +387,62 @@ async def update_config(request: Request):
     return {"status": "ok", "new_page_name": NEW_PAGE_NAME}
 
 
+@app.post("/api/generate_single")
+async def generate_single(request: Request, background_tasks: BackgroundTasks):
+    data = await request.json()
+    raw_text = data.get("text", "").strip()
+    theme = data.get("theme", "genel").strip()
+    persona = data.get("persona") or anonim_kullanici_adi()
+    admin_reply = data.get("admin_reply", "").strip()
+    immediate_share = data.get("share", True)
+
+    if not raw_text:
+        raise HTTPException(status_code=400, detail="Metin bos olamaz")
+
+    background_tasks.add_task(
+        run_single_production, 
+        raw_text, persona, theme, admin_reply, immediate_share
+    )
+    return {"status": "ok", "mesaj": "Tekli üretim ve paylaşım işlemi başlatıldı."}
+
+async def run_single_production(text, persona, theme, admin_reply, share):
+    try:
+        # 1. Claude Düzenleme
+        itiraf = claude.duzenle(text)
+        kategori_meta = tema_donustur(theme)
+        caption = claude.caption_uret(itiraf, kategori_meta)
+        
+        # 2. Video Üretme
+        video_id = f"single_{int(datetime.now().timestamp())}"
+        video_adi = f"{video_id}.mp4"
+        video_yolu = str(OUTPUT_DIR / video_adi)
+        
+        video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply)
+        
+        # 3. Metadata Kaydet
+        video_manager.video_ekle(
+            video_id=video_id,
+            dosya=video_adi,
+            itiraf=itiraf,
+            kategori=kategori_meta,
+            caption=caption,
+            gonderen=persona,
+            admin_reply=admin_reply
+        )
+        
+        # 4. Hemen Paylaş
+        if share:
+            from instagram_bot import InstagramBot
+            bot = InstagramBot()
+            bot.giris_yap()
+            ok = bot.reels_paylas(video_yolu, caption)
+            if ok:
+                video_manager.video_durum_guncelle(video_id, "paylasıldı")
+                
+    except Exception as e:
+        print(f"Tekli üretim hatası: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
