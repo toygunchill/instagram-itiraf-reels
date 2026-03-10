@@ -165,14 +165,38 @@ class VideoGenerator:
         draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
     def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None):
-        print("  Video üretiliyor...")
+        print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
         frameler = [self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
+        
         muzik_yolu = muzik_sec(tema)
         if muzik_yolu:
+            print(f"  [Video] Müzik bulundu: {os.path.basename(muzik_yolu)}")
             try:
-                ses = AudioFileClip(muzik_yolu).subclipped(0, VIDEO_SURE).with_volume_scaled(0.20)
-                klip = klip.with_audio(ses)
-            except: pass
-        klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
+                audio = AudioFileClip(muzik_yolu)
+                # Müzik videodan kısaysa döngüye sok, uzunsa kes
+                if audio.duration < VIDEO_SURE:
+                    from moviepy import afx
+                    audio = audio.with_effects([afx.AudioLoop(duration=VIDEO_SURE)])
+                else:
+                    audio = audio.subclipped(0, VIDEO_SURE)
+                
+                audio = audio.with_volume_scaled(0.25) # Sesi biraz daha artırdım (0.20 -> 0.25)
+                klip = klip.with_audio(audio)
+                print("  [Video] Müzik başarıyla eklendi.")
+            except Exception as e:
+                print(f"  [Video] Müzik ekleme hatası: {str(e)}")
+        else:
+            print("  [Video] UYARI: Bu tema için müzik dosyası bulunamadı!")
+
+        print(f"  [Video] Dosya kaydediliyor: {os.path.basename(cikti_yolu)}")
+        klip.write_videofile(
+            cikti_yolu, 
+            fps=VIDEO_FPS, 
+            codec="libx264", 
+            audio_codec="aac", 
+            temp_audiofile="temp-audio.m4a", # Ses için geçici dosya kullan
+            remove_temp=True,                # İşlem bitince temizle
+            logger=None
+        )
         return cikti_yolu
