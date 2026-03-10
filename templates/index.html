@@ -329,6 +329,11 @@
       </div>
 
       <button class="btn btn-yesil" id="btn-single-start" onclick="tekliUret()" style="width: 200px; height: 40px;">Üretimi Başlat</button>
+
+      <div class="log-header" style="margin-top: 25px;">
+        <span>Üretim ve Paylaşım Logları</span>
+      </div>
+      <div class="log-ekran" id="single-log-ekran" style="height: 150px;"></div>
     </div>
   </div>
 
@@ -465,10 +470,11 @@
       const mode = id === 'bot-dm' ? 'dm' : (id === 'bot-follow' ? 'follow' : 'share');
       logTimer = setInterval(() => logGuncelle(mode), 3000);
       logGuncelle(mode);
-    } else if (id === 'hizli') {
+    } else if (id === 'hizli' || id === 'tekli') {
       prodTimer = setInterval(prodDurumKontrol, 2000);
       prodDurumKontrol();
     } else if (id === 'ayarlar') {
+
       configYukle();
     }
   }
@@ -722,8 +728,21 @@
       document.getElementById('btn-prod-stop').style.display = aktif ? '' : 'none';
       document.getElementById('btn-prod-baslat').disabled = aktif;
       
+      const logsHtml = (d.logs || []).map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
+      
       const ekran = document.getElementById('prod-log-ekran');
-      ekran.innerHTML = (d.logs || []).map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
+      if (ekran) {
+        const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
+        ekran.innerHTML = logsHtml;
+        if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
+      }
+
+      const singleEkran = document.getElementById('single-log-ekran');
+      if (singleEkran) {
+        const wasBottomSingle = singleEkran.scrollTop + singleEkran.clientHeight >= singleEkran.scrollHeight - 20;
+        singleEkran.innerHTML = logsHtml;
+        if (wasBottomSingle) singleEkran.scrollTop = singleEkran.scrollHeight;
+      }
     } catch (_) {}
   }
 

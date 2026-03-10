@@ -406,8 +406,11 @@ async def generate_single(request: Request, background_tasks: BackgroundTasks):
     return {"status": "ok", "mesaj": "Tekli üretim ve paylaşım işlemi başlatıldı."}
 
 async def run_single_production(text, persona, theme, admin_reply, share):
+    from production_manager import production_manager
+    production_manager.log(f"Tekli üretim başlatıldı. Tema: {theme}")
     try:
         # 1. Claude Düzenleme
+        production_manager.log("Claude ile metin düzenleniyor...")
         itiraf = claude.duzenle(text)
         kategori_meta = tema_donustur(theme)
         caption = claude.caption_uret(itiraf, kategori_meta)
@@ -417,6 +420,7 @@ async def run_single_production(text, persona, theme, admin_reply, share):
         video_adi = f"{video_id}.mp4"
         video_yolu = str(OUTPUT_DIR / video_adi)
         
+        production_manager.log(f"Video üretiliyor (Müzik aranıyor)...")
         video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply)
         
         # 3. Metadata Kaydet
@@ -429,17 +433,24 @@ async def run_single_production(text, persona, theme, admin_reply, share):
             gonderen=persona,
             admin_reply=admin_reply
         )
+        production_manager.log("Video başarıyla üretildi.")
         
         # 4. Hemen Paylaş
         if share:
+            production_manager.log("Instagram'a bağlanılıyor...")
             from instagram_bot import InstagramBot
             bot = InstagramBot()
             bot.giris_yap()
+            production_manager.log("Paylaşım başlatıldı...")
             ok = bot.reels_paylas(video_yolu, caption)
             if ok:
                 video_manager.video_durum_guncelle(video_id, "paylasıldı")
+                production_manager.log("✅ Instagram'da başarıyla paylaşıldı!")
+            else:
+                production_manager.log("❌ Paylaşım başarısız oldu (Loglara bakın).")
                 
     except Exception as e:
+        production_manager.log(f"❌ HATA: {str(e)}")
         print(f"Tekli üretim hatası: {e}")
 
 
