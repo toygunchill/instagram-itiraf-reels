@@ -99,36 +99,49 @@ class InstagramBot:
 
     # ---- Session ----
 
-    def giris_yap(self):
+    def giris_yap(self, max_retries=3):
         log("Instagram'a güvenli giriş yapılıyor...")
         
-        # Giriş yapmadan önce rastgele bekleme
-        time.sleep(random.uniform(2, 5))
-        
-        if SESSION_FILE.exists():
+        for attempt in range(max_retries):
             try:
-                self.cl.load_settings(str(SESSION_FILE))
-                self.cl.get_timeline_feed()
-                log("Mevcut oturumla devam ediliyor.")
-                return
-            except:
-                log("Oturum geçersiz, temizleniyor...")
-                if SESSION_FILE.exists():
-                    os.remove(SESSION_FILE)
+                # Giriş yapmadan önce kademeli bekleme
+                wait_time = (attempt * 15) + random.randint(5, 10)
+                if attempt > 0:
+                    log(f"Deneme {attempt+1}/{max_retries}. {wait_time} saniye bekleniyor...")
+                    time.sleep(wait_time)
+                else:
+                    time.sleep(random.uniform(2, 5))
 
-        try:
-            # User agent'ı yenile
-            self.cl.set_user_agent() 
-            log(f"Kullanıcı adı deneniyor: {IG_USERNAME}")
-            self.cl.login(IG_USERNAME, IG_PASSWORD)
-            self.cl.dump_settings(str(SESSION_FILE))
-            log("Yeni oturum açıldı ve kaydedildi.")
-        except Exception as e:
-            log(f"Giriş hatası: {e}")
-            # Eğer hata 'UnknownError' veya 'Bad Request' ise session temizle
-            if SESSION_FILE.exists():
-                os.remove(SESSION_FILE)
-            raise
+                if SESSION_FILE.exists():
+                    try:
+                        self.cl.load_settings(str(SESSION_FILE))
+                        # Session kontrolü (Bu kısım 500 verebilir, o yüzden try içinde)
+                        self.cl.get_timeline_feed() 
+                        log("Mevcut oturumla devam ediliyor.")
+                        return
+                    except Exception as e:
+                        log(f"Oturum kontrolü başarısız (Hata: {e}), temizleniyor...")
+                        if SESSION_FILE.exists(): os.remove(SESSION_FILE)
+
+                # Sıfırdan giriş
+                self.cl.set_user_agent()
+                log(f"Kullanıcı adı deneniyor: {IG_USERNAME}")
+                if self.cl.login(IG_USERNAME, IG_PASSWORD):
+                    self.cl.dump_settings(str(SESSION_FILE))
+                    log("Yeni oturum açıldı ve kaydedildi.")
+                    return
+                
+            except Exception as e:
+                log(f"Giriş denemesinde hata oluştu: {e}")
+                if attempt == max_retries - 1:
+                    log("Maksimum giriş denemesine ulaşıldı. Bot durduruluyor.")
+                    if SESSION_FILE.exists(): os.remove(SESSION_FILE)
+                    raise
+                
+                # Eğer Instagram 500 hatası veriyorsa IP/Cihaz engeli olabilir, session temizle
+                if "500" in str(e) or "Max retries exceeded" in str(e):
+                    if SESSION_FILE.exists(): os.remove(SESSION_FILE)
+                    log("Instagram 500 hatası döndürdü. Oturum sıfırlandı.")
 
     def cikis_yap(self):
         log("Instagram oturumu kapatılıyor...")
