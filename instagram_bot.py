@@ -259,10 +259,14 @@ class InstagramBot:
             if os.path.exists(thumb): os.remove(thumb)
             return True
         except Exception as e:
-            if '"status": "ok"' in str(e).lower():
+            # Eğer hata mesajı içinde 'status': 'ok' geçiyorsa başarılı say
+            if "'status': 'ok'" in str(e).lower() or '"status": "ok"' in str(e).lower():
+                log("Bilgi: Bilinmeyen bir hata oluştu ama Instagram 'ok' yanıtı döndü. Başarılı sayılıyor...")
                 self.daily_stats["shares"] += 1
                 self._stats_kaydet()
                 if os.path.exists(video_yolu): os.remove(video_yolu)
+                thumb = str(video_yolu) + ".jpg"
+                if os.path.exists(thumb): os.remove(thumb)
                 return True
             log(f"Paylaşım hatası: {e}")
             return False
