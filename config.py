@@ -8,7 +8,7 @@ load_dotenv(Path(__file__).parent / ".env", override=True)
 # Ortam degiskenleri
 IG_USERNAME = os.getenv("IG_USERNAME", "")
 IG_PASSWORD = os.getenv("IG_PASSWORD", "")
-PAGE_NAME = os.getenv("PAGE_NAME", "itiraf.sayfasi")
+PAGE_NAME = os.getenv("PAGE_NAME", "gizli_itiraf_edenler")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # Proje dizinleri
@@ -132,23 +132,28 @@ def tema_donustur(tema: str) -> str:
 
 
 def muzik_sec(tema: str) -> str | None:
-    """Tema'ya göre uygun Vibe seçer ve o klasörden rastgele müzik döndürür."""
+    """Tema'ya göre uygun Vibe seçer, gerekirse indirir ve o klasörden rastgele müzik döndürür."""
     # 1. Theme Analizi (Prompt Madde 1)
     tema_key = tema.lower().strip()
-    
+
     # 2. Theme -> Vibe Eşleşmesi (Prompt Madde 2)
     vibe_listesi = THEME_VIBES.get(tema_key)
-    
+
     # 3. Fallback (Prompt Madde 3)
     if not vibe_listesi:
         vibe = random.choice(FALLBACK_VIBES)
     else:
         vibe = random.choice(vibe_listesi)
-    
+
+    # Otomatik İndirme Adımı (Prompt Madde 9 - Internet Müzik İndir)
+    from music_downloader import music_download
+    music_download(vibe)
+
     # Kategori klasörü
     alt_klasor = KATEGORI_MUZIK.get(vibe, "genel")
     klasor = MUZIK_DIR / alt_klasor
-    
+...
+
     # Müzik seçimi
     dosyalar = list(klasor.glob("*.mp3"))
     if not dosyalar:
