@@ -3,861 +3,410 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Itiraf Reels Paneli</title>
+  <title>GİE | Yönetim Merkezi</title>
   <style>
     :root {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface2: #1e1e1e;
-      --border: #2a2a2a;
-      --text: #f0f0f0;
-      --text2: #888;
-      --accent: #0095f6;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
+      --bg: #050505; --surface: #0f0f0f; --surface2: #1a1a1a;
+      --accent: #0095f6; --text: #ffffff; --text2: #a8a8a8;
+      --border: #262626; --danger: #ed4956; --success: #00f294;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
-
-    /* Header */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    header h1 { font-size: 17px; font-weight: 600; }
-    .header-durum { font-size: 12px; color: var(--text2); margin-left: auto; }
-    .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--danger); flex-shrink: 0;
-    }
-    .dot.aktif { background: var(--success); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
-
-    /* Tabs */
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      padding: 0 24px;
-    }
-    .tab {
-      padding: 11px 18px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      color: var(--text2);
-      font-size: 14px;
-      transition: color .2s, border-color .2s;
-      user-select: none;
-    }
-    .tab.aktif { color: var(--text); border-bottom-color: var(--accent); }
-
-    /* Main */
-    main { padding: 24px; max-width: 1440px; margin: 0 auto; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.6; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 15px 30px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 20px; font-weight: 800; cursor: pointer; }
+    .logo span { color: var(--accent); }
+    .status-badge { margin-left: 20px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
+    .dot { width: 8px; height: 8px; background: #555; border-radius: 50%; }
+    .dot.aktif { background: var(--success); box-shadow: 0 0 10px var(--success); }
+    main { padding: 30px; max-width: 1200px; margin: 0 auto; }
     .panel { display: none; }
-    .panel.aktif { display: block; }
-
-    /* Toolbar */
-    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .toolbar-bilgi { font-size: 13px; color: var(--text2); }
-    .filter-btn {
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text2);
-      font-size: 12px;
-      cursor: pointer;
-      transition: all .2s;
-    }
-    .filter-btn.aktif { border-color: var(--accent); color: var(--accent); background: rgba(0,149,246,.08); }
-
-    /* Video grid */
-    .video-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 18px;
-    }
-    .video-kart {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      transition: border-color .2s;
-    }
-    .video-kart:hover { border-color: #3a3a3a; }
-    .video-kart video {
-      width: 100%; display: block;
-      background: #000;
-      aspect-ratio: 9/16;
-      object-fit: cover;
-    }
-    .kart-body { padding: 14px; }
-    .kart-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-    .badge {
-      font-size: 11px; padding: 3px 8px; border-radius: 20px;
-      background: var(--surface2); color: var(--text2);
-      text-transform: uppercase; letter-spacing: .5px;
-    }
-    .badge-durum { margin-left: auto; }
-    .badge-bekliyor { background: rgba(245,158,11,.12); color: var(--warning); }
-    .badge-paylasıldı { background: rgba(34,197,94,.12); color: var(--success); }
-    .itiraf-metin {
-      font-size: 13px; color: var(--text2); line-height: 1.55;
-      margin-bottom: 8px;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .caption-metin {
-      font-size: 12px; color: #4a4a4a; line-height: 1.5;
-      margin-bottom: 10px;
-      border-left: 2px solid var(--border); padding-left: 8px;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-      position: relative;
-    }
-    .caption-konteyner { position: relative; group; }
-    .kopyala-btn {
-      position: absolute; right: 5px; top: 0;
-      background: var(--surface2); color: var(--accent);
-      border: 1px solid var(--border); border-radius: 4px;
-      padding: 2px 6px; font-size: 10px; cursor: pointer;
-      opacity: 0; transition: opacity .2s;
-    }
-    .video-kart:hover .kopyala-btn { opacity: 1; }
-    .kopyala-btn:hover { background: var(--accent); color: #fff; }
-
-    .gonderen { font-size: 11px; color: #555; margin-bottom: 12px; }
-    .paylas-btn {
-      width: 100%; padding: 9px;
-      background: var(--accent); color: #fff;
-      border: none; border-radius: 8px;
-      font-size: 13px; font-weight: 500;
-      cursor: pointer; transition: opacity .2s;
-    }
-    .paylas-btn:hover:not(:disabled) { opacity: .85; }
-    .paylas-btn:disabled { opacity: .4; cursor: not-allowed; }
-    .paylas-btn.paylasıldi { background: var(--surface2); color: var(--text2); }
-
-    .sil-btn {
-      flex: 1; padding: 6px;
-      background: none; color: var(--danger);
-      border: 1px solid rgba(239,68,68,0.2); border-radius: 8px;
-      font-size: 11px; font-weight: 500;
-      cursor: pointer; transition: all .2s;
-    }
-    .sil-btn:hover { background: rgba(239,68,68,0.1); border-color: var(--danger); }
-
-    .ikincil-btn {
-      flex: 1; padding: 6px;
-      background: var(--surface2); color: var(--text2);
-      border: 1px solid var(--border); border-radius: 8px;
-      font-size: 11px; font-weight: 500;
-      cursor: pointer; transition: all .2s;
-    }
-    .ikincil-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    .kart-aksiyonlar {
-      display: flex; gap: 8px; margin-top: 8px;
-    }
-
-    .bos-mesaj { text-align: center; padding: 60px 20px; color: var(--text2); grid-column: 1/-1; }
-    .bos-mesaj code { display: block; margin-top: 10px; font-family: monospace; font-size: 12px; color: #555; }
-
-    /* Bot paneli */
-    .kutu {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-    }
-    .kutu-baslik { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
-    .durum-satir { display: flex; align-items: center; gap: 12px; }
-    .durum-yazisi { font-size: 14px; }
-    .btn {
-      padding: 8px 16px; border-radius: 8px; border: none;
-      font-size: 13px; font-weight: 500; cursor: pointer;
-      transition: opacity .2s;
-    }
-    .btn:hover:not(:disabled) { opacity: .85; }
-    .btn:disabled { opacity: .4; cursor: not-allowed; }
-    .btn-yesil { background: var(--success); color: #fff; }
+    .panel.aktif { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 25px; transition: 0.3s; cursor: pointer; display: flex; flex-direction: column; gap: 12px; }
+    .card:hover { transform: translateY(-5px); border-color: var(--accent); }
+    .list-view { display: flex; flex-direction: column; gap: 12px; max-width: 800px; margin: 20px auto; }
+    .list-item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s; }
+    .list-item:hover { border-color: var(--accent); background: var(--surface2); padding-left: 30px; }
+    .acc-avatar { width: 40px; height: 40px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+    .tabs { display: flex; gap: 5px; margin-bottom: 25px; background: var(--surface); padding: 5px; border-radius: 12px; width: fit-content; }
+    .tab { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+    .tab.aktif { background: var(--accent); color: #fff; }
+    .kutu { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+    .kutu-baslik { font-size: 16px; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+    .btn { padding: 10px 20px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; font-size: 13px; }
+    .btn-yesil { background: var(--accent); color: #fff; }
     .btn-kirmizi { background: var(--danger); color: #fff; }
-
-    /* Log */
-    .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .log-header span { font-size: 12px; color: var(--text2); }
-    .log-temizle { background: none; border: none; color: #555; font-size: 12px; cursor: pointer; }
-    .log-ekran {
-      background: #080808;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px;
-      height: 440px;
-      overflow-y: auto;
-      font-family: 'SF Mono', Menlo, monospace;
-      font-size: 12px;
-      line-height: 1.7;
-      color: #8a8a8a;
-    }
-    .log-satir { white-space: pre-wrap; word-break: break-all; }
-    .log-satir.hata { color: var(--danger); }
-    .log-satir.basari { color: var(--success); }
-
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 13px;
-      transform: translateY(80px); opacity: 0;
-      transition: all .3s; z-index: 100;
-    }
-    .toast.goster { transform: translateY(0); opacity: 1; }
-    .toast.basari { border-color: var(--success); color: var(--success); }
-    .toast.hata { border-color: var(--danger); color: var(--danger); }
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
+    .video-kart { background: var(--surface2); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+    .video-kart video { width: 100%; aspect-ratio: 9/16; background: #000; }
+    .kart-body { padding: 12px; }
+    .log-ekran { background: #000; border-radius: 10px; padding: 12px; height: 250px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
+    .log-satir { color: #0f0; margin-bottom: 3px; }
+    .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--text2); font-size: 11px; text-transform: uppercase; font-weight: 700; }
+    input, textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: #fff; padding: 12px; margin-bottom: 10px; }
+    .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 25px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
+    .toast.goster { opacity: 1; }
+    .back-btn { margin-bottom: 20px; cursor: pointer; color: var(--text2); font-size: 14px; font-weight: 600; display: inline-block; }
+    .inner-panel { display: none; }
+    .inner-panel.aktif { display: block; }
+    .badge { padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: var(--surface2); color: var(--text2); cursor: pointer; border: none; }
+    .badge.aktif { background: var(--accent); color: #fff; }
+    .badge-durum.badge-bekliyor { color: #eab308; }
+    .badge-durum.badge-paylasıldı { color: var(--success); }
+    .caption-metin { font-size: 11px; color: var(--text2); background: rgba(255,255,255,0.02); padding: 6px; border-radius: 6px; margin: 8px 0; border-left: 2px solid var(--accent); position: relative; }
+    .kopyala-btn { position: absolute; right: 4px; top: 4px; font-size: 9px; background: var(--accent); color: #fff; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; opacity: 0; }
+    .caption-metin:hover .kopyala-btn { opacity: 1; }
+    
+    .stats-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+    .stat-box { background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
+    .stat-val { display: block; font-size: 20px; font-weight: 800; color: var(--accent); }
+    .stat-lbl { display: block; font-size: 10px; color: var(--text2); text-transform: uppercase; margin-top: 5px; }
   </style>
 </head>
 <body>
 
 <header>
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0095f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="2" y="2" width="20" height="20" rx="5"/>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-  </svg>
-  <h1>Itiraf Reels Paneli</h1>
-  <span class="header-durum" id="header-durum">Kontrol ediliyor...</span>
-  <div class="dot" id="header-dot"></div>
+  <div class="logo" onclick="sekme('home')">GİE <span>LOG</span></div>
+  <div class="status-badge">
+    <div class="dot" id="header-dot"></div>
+    <span id="header-durum">Sistem Hazır</span>
+  </div>
 </header>
 
-<div class="tabs">
-  <div class="tab aktif" onclick="sekme('videolar', this)">Videolar <span id="video-sayac"></span></div>
-  <div class="tab" onclick="sekme('tekli', this)">Tekli Üret</div>
-  <div class="tab" onclick="sekme('hizli', this)">Hızlı Üret (JSON)</div>
-  <div class="tab" onclick="sekme('bot-share', this)">Paylaşım Botu</div>
-  <div class="tab" onclick="sekme('bot-dm', this)">DM Botu</div>
-  <div class="tab" onclick="sekme('bot-follow', this)">Takip Botu</div>
-  <div class="tab" onclick="sekme('ayarlar', this)">Ayarlar</div>
-</div>
-
 <main>
-...
-  <!-- === Share Bot === -->
-  <div class="panel" id="panel-bot-share">
-    <div class="kutu">
-      <div class="kutu-baslik">Paylaşım Botu Kontrolü</div>
-      <p style="font-size: 12px; color: var(--text2); margin-bottom: 15px;">Zamanlanmış videoları (JSON'dan gelenler) saati gelince otomatik paylaşır.</p>
-      <div class="durum-satir">
-        <div class="dot" id="share-bot-dot"></div>
-        <span class="durum-yazisi" id="share-bot-durum-yazisi">Kontrol ediliyor...</span>
-        <button class="btn btn-yesil" id="btn-share-start" onclick="botStart('share')">Botu Başlat</button>
-        <button class="btn btn-kirmizi" id="btn-share-stop" onclick="botStop('share')" style="display:none">Durdur</button>
-      </div>
-    </div>
-
-    <div class="kutu">
-      <div class="log-header">
-        <span>Paylaşım Botu Logları</span>
-        <button class="log-temizle" onclick="logTemizle('share')">Temizle</button>
-      </div>
-      <div class="log-ekran" id="share-log-ekran"></div>
+  <!-- 1. DASHBOARD -->
+  <div class="panel aktif" id="panel-home">
+    <h1 style="margin-bottom: 20px;">Hoş Geldiniz</h1>
+    <div class="dashboard-grid">
+      <div class="card" onclick="sekme('ig-list')"><i>📱</i><h3>Instagram Paneli</h3><p>Otomasyon ve üretim araçları.</p></div>
+      <div class="card" onclick="sekme('add-account')"><i>➕</i><h3>Hesap Ekle</h3><p>Yeni bir sayfa bağlayın.</p></div>
+      <div class="card"><i>📊</i><h3>İstatistikler</h3><p>Yakında.</p></div>
+      <div class="card"><i>⚙️</i><h3>Sistem</h3><p>Yakında.</p></div>
     </div>
   </div>
 
-  <!-- === DM Bot === -->
-
-  <div class="panel aktif" id="panel-videolar">
-    <div class="toolbar">
-      <span class="toolbar-bilgi" id="toolbar-bilgi"></span>
-      <button class="filter-btn aktif" onclick="filtre('hepsi', this)">Hepsi</button>
-      <button class="filter-btn" onclick="filtre('bekliyor', this)">Bekliyor</button>
-      <button class="filter-btn" onclick="filtre('paylasıldı', this)">Paylasıldı</button>
-    </div>
-    <div class="video-grid" id="video-grid">
-      <div class="bos-mesaj">Yukleniyor...</div>
+  <!-- 2. IG MODÜLLERİ -->
+  <div class="panel" id="panel-ig-list">
+    <div class="back-btn" onclick="sekme('home')">← Geri Dön</div>
+    <h2>Instagram Araçları</h2>
+    <div class="list-view">
+      <div class="list-item" onclick="hesaplariYukle(); sekme('itiraf-accounts');">
+        <div><p style="font-weight:700">İtiraf Sayfası Otomasyonu</p><p style="font-size:12px;color:var(--text2)">Video üretimi ve botlar.</p></div>
+        <span>HESAPLARI GÖR →</span>
+      </div>
     </div>
   </div>
 
-  <!-- === Tekli Üret === -->
-  <div class="panel" id="panel-tekli">
-    <div class="kutu">
-      <div class="kutu-baslik">Tekli Video Üret ve Paylaş</div>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-        <div>
-          <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">Persona (Kim gönderdi?)</label>
-          <input type="text" id="single-persona" placeholder="Örn: 25 yaşında kadın (Boş bırakılırsa anonim üretilir)" style="width: 100%; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
+  <!-- 3. HESAP LİSTESİ -->
+  <div class="panel" id="panel-itiraf-accounts">
+    <div class="back-btn" onclick="sekme('ig-list')">← Geri Dön</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2>İtiraf Sayfalarınız</h2>
+        <button class="btn btn-yesil" onclick="sekme('add-account')">+ Yeni Hesap</button>
+    </div>
+    <div class="list-view" id="accounts-container"></div>
+  </div>
+
+  <!-- 4. HESAP EKLEME FORMU -->
+  <div class="panel" id="panel-add-account">
+    <div class="back-btn" onclick="sekme('home')">← Geri Dön</div>
+    <div class="kutu" style="max-width: 500px; margin: 0 auto;">
+        <h3>Yeni Instagram Hesabı Ekle</h3>
+        <input type="text" id="new-acc-username" placeholder="E-posta veya Kullanıcı Adı">
+        <input type="password" id="new-acc-password" placeholder="Şifre">
+        <input type="text" id="new-acc-pagename" placeholder="Sayfa Adı">
+        <button class="btn btn-yesil" onclick="hesapEkle()" style="width:100%">Hesabı Kaydet</button>
+    </div>
+  </div>
+
+  <!-- 5. İTİRAF PANELİ -->
+  <div class="panel" id="panel-itiraf">
+    <div class="back-btn" onclick="sekme('itiraf-accounts')">← Geri Dön</div>
+    <div class="tabs">
+      <div class="tab aktif" onclick="innerSekme('v-liste', this)">Videolar</div>
+      <div class="tab" onclick="innerSekme('v-tekli', this)">Tekli Üret</div>
+      <div class="tab" onclick="innerSekme('v-hizli', this)">Hızlı Üret</div>
+      <div class="tab" onclick="innerSekme('v-botlar', this)">Botlar</div>
+      <div class="tab" onclick="innerSekme('v-ayarlar', this)">Ayarlar</div>
+    </div>
+    
+    <!-- Liste -->
+    <div class="inner-panel aktif" id="inner-v-liste">
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <button class="badge aktif" onclick="filtre('hepsi', this)">Hepsi</button>
+            <button class="badge" onclick="filtre('bekliyor', this)">Bekliyor</button>
+            <button class="badge" onclick="filtre('paylasıldı', this)">Paylasıldı</button>
         </div>
-        <div>
-          <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">Tema (Müzik seçimi için)</label>
-          <select id="single-theme" style="width: 100%; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
-            <option value="genel">Genel</option>
-            <option value="ilişki">İlişki</option>
-            <option value="cinsellik">Cinsellik</option>
-            <option value="aldatma">Aldatma</option>
-            <option value="yalnızlık">Yalnızlık</option>
-            <option value="pişmanlık">Pişmanlık</option>
-            <option value="iş hayatı">İş Hayatı</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">İtiraf Metni</label>
-        <textarea id="single-text" placeholder="İtirafı buraya yazın..." style="width: 100%; height: 100px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;"></textarea>
-      </div>
-
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px;">Admin Cevabı</label>
-        <textarea id="single-admin-reply" placeholder="Admin olarak cevabınız (Emoji ekleyebilirsiniz)..." style="width: 100%; height: 60px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;"></textarea>
-      </div>
-
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-        <input type="checkbox" id="single-share" checked style="width: 16px; height: 16px;">
-        <label for="single-share" style="font-size: 13px; color: var(--text);">Üretildikten sonra hemen Instagram'da paylaş</label>
-      </div>
-
-      <button class="btn btn-yesil" id="btn-single-start" onclick="tekliUret()" style="width: 200px; height: 40px;">Üretimi Başlat</button>
-
-      <div class="log-header" style="margin-top: 25px;">
-        <span>Üretim ve Paylaşım Logları</span>
-      </div>
-      <div class="log-ekran" id="single-log-ekran" style="height: 150px;"></div>
+        <div class="video-grid" id="video-grid"></div>
     </div>
-  </div>
 
-  <!-- === Hızlı Üret === -->
-  <div class="panel" id="panel-hizli">
-    <div class="kutu">
-      <div class="kutu-baslik">Üretim Kontrolü</div>
-      <div class="durum-satir" style="margin-bottom: 15px;">
-        <div class="dot" id="prod-dot"></div>
-        <span class="durum-yazisi" id="prod-durum-yazisi">Boşta</span>
-        <span id="prod-ilerleme" style="font-size: 13px; color: var(--text2); margin-left: 10px;"></span>
+    <!-- Tekli -->
+    <div class="inner-panel" id="inner-v-tekli">
+        <div class="kutu">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <input type="text" id="single-persona" placeholder="Persona">
+                <select id="single-theme">
+                    <option value="genel">Genel</option>
+                    <option value="ilişki">İlişki</option>
+                    <option value="aldatma">Aldatma</option>
+                </select>
+            </div>
+            <textarea id="single-text" placeholder="İtiraf Metni" style="height:100px;"></textarea>
+            <textarea id="single-admin-reply" placeholder="Admin Cevabı" style="height:60px;"></textarea>
+            <button class="btn btn-yesil" onclick="tekliUret()">Üretimi Başlat</button>
+            <div class="log-header" style="margin-top:20px;">Üretim Logları <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
+            <div class="log-ekran" id="single-log-ekran" style="height:200px;"></div>
+        </div>
+    </div>
+
+    <!-- Hızlı -->
+    <div class="inner-panel" id="inner-v-hizli">
+        <div class="kutu">
+            <textarea id="json-input" placeholder="JSON yapıştırın..." style="height:200px; font-family:monospace;"></textarea>
+            <button class="btn btn-yesil" onclick="hizliUret()">Üretimi Başlat</button>
+            <div class="log-header" style="margin-top:20px;">Üretim Logları <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
+            <div class="log-ekran" id="prod-log-ekran" style="height:200px;"></div>
+        </div>
+    </div>
+
+    <!-- Botlar -->
+    <div class="inner-panel" id="inner-v-botlar">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+            <div class="kutu">
+                <div class="kutu-baslik">DM Botu <div class="dot" id="dm-bot-dot"></div></div>
+                <button class="btn btn-yesil" id="btn-dm-start" onclick="botStart('dm')">Başlat</button>
+                <button class="btn btn-kirmizi" id="btn-dm-stop" onclick="botStop('dm')" style="display:none">Durdur</button>
+                <div class="log-header" style="margin-top:15px;">Loglar <button onclick="logTemizle('dm')" style="background:none;border:none;color:var(--accent);cursor:pointer">Temizle</button></div>
+                <div class="log-ekran" id="dm-log-ekran" style="height:150px;"></div>
+            </div>
+            <div class="kutu">
+                <div class="kutu-baslik">Paylaşım Botu <div class="dot" id="share-bot-dot"></div></div>
+                <button class="btn btn-yesil" id="btn-share-start" onclick="botStart('share')">Başlat</button>
+                <button class="btn btn-kirmizi" id="btn-share-stop" onclick="botStop('share')" style="display:none">Durdur</button>
+                <div class="log-header" style="margin-top:15px;">Loglar <button onclick="logTemizle('share')" style="background:none;border:none;color:var(--accent);cursor:pointer">Temizle</button></div>
+                <div class="log-ekran" id="share-log-ekran" style="height:150px;"></div>
+            </div>
+        </div>
+        <div class="kutu">
+            <div class="kutu-baslik">Takip Botu <div class="dot" id="follow-bot-dot"></div></div>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <input type="text" id="follow-target" placeholder="Hedef Kullanıcı" style="margin:0; max-width:250px;">
+                <button class="btn btn-yesil" id="btn-follow-start" onclick="botStart('follow')">Başlat</button>
+                <button class="btn btn-kirmizi" id="btn-follow-stop" onclick="botStop('follow')" style="display:none">Durdur</button>
+            </div>
+            <div class="log-header">Loglar <button onclick="logTemizle('follow')" style="background:none;border:none;color:var(--accent);cursor:pointer">Temizle</button></div>
+            <div class="log-ekran" id="follow-log-ekran" style="height:150px;"></div>
+        </div>
+    </div>
+
+    <!-- Ayarlar -->
+    <div class="inner-panel" id="inner-v-ayarlar">
+        <div class="stats-container">
+            <div class="stat-box"><span class="stat-val" id="ext-followers">0</span><span class="stat-lbl">Takipçi</span></div>
+            <div class="stat-box"><span class="stat-val" id="ext-avg-views">0</span><span class="stat-lbl">Ort. İzlenme</span></div>
+            <div class="stat-box"><span class="stat-val" id="ext-total-videos">0</span><span class="stat-lbl">Toplam Video</span></div>
+            <div class="stat-box"><span class="stat-val" id="ext-shared-videos">0</span><span class="stat-lbl">Paylaşılan</span></div>
+        </div>
         
-        <div style="margin-left: auto; display: flex; gap: 8px;">
-          <button class="btn btn-kirmizi" id="btn-prod-stop" onclick="prodDurdur()" style="display:none">Durdur</button>
-          <button class="btn" id="btn-prod-reset" onclick="prodSifirla()" style="background: var(--surface2); color: var(--text2);">Sıfırla</button>
+        <div class="kutu">
+            <div class="kutu-baslik">Hesap Bilgileri</div>
+            <label style="font-size: 11px; color: var(--text2);">Kullanıcı Adı / Email</label>
+            <input type="text" id="active-acc-username" placeholder="Email">
+            <label style="font-size: 11px; color: var(--text2);">Şifre</label>
+            <input type="password" id="active-acc-password" placeholder="Şifre">
+            <label style="font-size: 11px; color: var(--text2);">Sayfa Başlığı</label>
+            <input type="text" id="active-acc-pagename" placeholder="Görünecek İsim">
+            <button class="btn btn-yesil" onclick="hesapBilgisiGuncelle()" style="width:100%; margin-top:10px;">Bilgileri Güncelle</button>
         </div>
-      </div>
-      
-      <div class="log-header">
-        <span>Üretim Logları</span>
-      </div>
-      <div class="log-ekran" id="prod-log-ekran" style="height: 200px; margin-bottom: 20px;"></div>
-
-      <div class="kutu-baslik">JSON İle Toplu Üretim</div>
-      <p style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">
-        Aşağıdaki alana itiraf JSON'ını yapıştırın. Videolar hemen üretilecek ve 30'ar dakika ara ile paylaşılmak üzere sıraya alınacaktır.
-      </p>
-      <textarea id="json-input" placeholder='JSON yapıştırın...' style="width: 100%; height: 200px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #aaa; font-family: monospace; padding: 12px; margin-bottom: 16px;"></textarea>
-      <div style="display: flex; gap: 10px;">
-        <button class="btn btn-yesil" id="btn-prod-baslat" onclick="hizliUret()">Üretimi Başlat</button>
-        <button class="btn" style="background: var(--surface2); color: var(--text2);" onclick="jsonOrnek()">Örnek Format</button>
-      </div>
+        
+        <div class="kutu">
+            <div class="kutu-baslik">Hızlı Etkileşim</div>
+            <button class="btn btn-yesil" onclick="shareStory()" style="width:100%">Sıradaki Story'yi Paylaş</button>
+        </div>
     </div>
   </div>
-
-  <!-- === DM Bot === -->
-  <div class="panel" id="panel-bot-dm">
-    <div class="kutu">
-      <div class="kutu-baslik">DM Botu Kontrolü</div>
-      <div class="durum-satir">
-        <div class="dot" id="dm-bot-dot"></div>
-        <span class="durum-yazisi" id="dm-bot-durum-yazisi">Kontrol ediliyor...</span>
-        <button class="btn btn-yesil" id="btn-dm-start" onclick="botStart('dm')">Botu Başlat</button>
-        <button class="btn btn-kirmizi" id="btn-dm-stop" onclick="botStop('dm')" style="display:none">Durdur</button>
-      </div>
-    </div>
-
-    <div class="kutu">
-      <div class="log-header">
-        <span>DM Botu Logları</span>
-        <button class="log-temizle" onclick="logTemizle('dm')">Temizle</button>
-      </div>
-      <div class="log-ekran" id="dm-log-ekran"></div>
-    </div>
-  </div>
-
-  <!-- === Follow Bot === -->
-  <div class="panel" id="panel-bot-follow">
-    <div class="kutu">
-      <div class="kutu-baslik">Takip Botu Kontrolü</div>
-      
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 8px;">Hedef Kullanıcı</label>
-        <input type="text" id="follow-target" placeholder="Örn: rakip_sayfa" style="width: 100%; max-width: 300px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
-      </div>
-
-      <div class="durum-satir">
-        <div class="dot" id="follow-bot-dot"></div>
-        <span class="durum-yazisi" id="follow-bot-durum-yazisi">Kontrol ediliyor...</span>
-        <button class="btn btn-yesil" id="btn-follow-start" onclick="botStart('follow')">Botu Başlat</button>
-        <button class="btn btn-kirmizi" id="btn-follow-stop" onclick="botStop('follow')" style="display:none">Durdur</button>
-      </div>
-
-      <div style="display: flex; gap: 30px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); overflow-x: auto;">
-        <div>
-          <span style="display: block; font-size: 11px; color: var(--text2); text-transform: uppercase;">Takip</span>
-          <span id="stat-following" style="font-size: 18px; font-weight: 600; color: #fff;">0</span>
-        </div>
-        <div>
-          <span style="display: block; font-size: 11px; color: var(--text2); text-transform: uppercase;">Takipçi</span>
-          <span id="stat-followers" style="font-size: 18px; font-weight: 600; color: #fff;">0</span>
-        </div>
-        <div>
-          <span style="display: block; font-size: 11px; color: var(--text2); text-transform: uppercase;">Ort. İzlenme</span>
-          <span id="stat-views" style="font-size: 18px; font-weight: 600; color: var(--accent);">0</span>
-        </div>
-        </div>
-
-          <span style="display: block; font-size: 11px; color: var(--text2); text-transform: uppercase;">İstek Atılan (Bot)</span>
-          <span id="stat-followed" style="font-size: 18px; font-weight: 600; color: var(--accent);">0</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="kutu">
-      <div class="log-header">
-        <span>Takip Botu Logları</span>
-        <button class="log-temizle" onclick="logTemizle('follow')">Temizle</button>
-      </div>
-      <div class="log-ekran" id="follow-log-ekran"></div>
-    </div>
-  <!-- === Ayarlar === -->
-  <div class="panel" id="panel-ayarlar">
-    <div class="kutu">
-      <div class="kutu-baslik">Genel Ayarlar</div>
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; font-size: 12px; color: var(--text2); margin-bottom: 8px;">Video Chat Başlığı (Sayfa Adı)</label>
-        <div style="display: flex; gap: 10px;">
-          <input type="text" id="config-page-name" placeholder="Örn: gizli_itiraf_edenler" style="width: 100%; max-width: 400px; background: #080808; border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 13px;">
-          <button class="btn btn-yesil" onclick="configGuncelle()">Kaydet</button>
-        </div>
-        <p style="font-size: 11px; color: #555; margin-top: 8px;">Bu başlık, üretilen videolarda chat penceresinin üstünde görünür.</p>
-      </div>
-    </div>
-
-    <div class="kutu" style="margin-top: 20px;">
-      <div class="kutu-baslik">Hızlı Etkileşim</div>
-      <p style="font-size: 13px; color: var(--text2); margin-bottom: 15px;">
-        Takipçilerinden itiraf göndermelerini isteyen bir Story paylaş. 10 farklı cümleden sıradaki seçilir.
-      </p>
-      <button class="btn btn-yesil" id="btn-story-share" onclick="shareStory()">Şu Anki Sıradaki Story'yi Paylaş</button>
-    </div>
-  </div>
-
 </main>
 
 <div class="toast" id="toast"></div>
 
 <script>
   let tumVideolar = [];
-  let aktifFiltre = 'hepsi';
-  let logTimer = null;
-  let prodTimer = null;
+  let currentFilter = 'hepsi';
   let sonLogs = { dm: 0, follow: 0, share: 0 };
+  let botLoopTimer, prodLoopTimer;
 
-  // ---- Sekmeler ----
-  function sekme(id, el) {
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('aktif'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('aktif'));
-    document.getElementById('panel-' + id).classList.add('aktif');
+  function toast(msg) { const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('goster'); setTimeout(()=>el.classList.remove('goster'),3000); }
+  
+  function sekme(id) {
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('aktif'));
+    document.getElementById(`panel-${id}`).classList.add('aktif');
+    if(id==='itiraf') { videoYukle(); if(!botLoopTimer) botLoopTimer = setInterval(botDurumKontrol, 3000); }
+    if(id==='itiraf-accounts') hesaplariYukle();
+    if(id==='home') { clearInterval(botLoopTimer); botLoopTimer = null; }
+  }
+
+  function innerSekme(id, el) {
+    document.querySelectorAll('.inner-panel').forEach(p=>p.classList.remove('aktif'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('aktif'));
+    document.getElementById(`inner-${id}`).classList.add('aktif');
     el.classList.add('aktif');
-    
-    clearInterval(logTimer);
-    clearInterval(prodTimer);
-
-    if (id === 'bot-dm' || id === 'bot-follow' || id === 'bot-share') {
-      const mode = id === 'bot-dm' ? 'dm' : (id === 'bot-follow' ? 'follow' : 'share');
-      logTimer = setInterval(() => logGuncelle(mode), 3000);
-      logGuncelle(mode);
-    } else if (id === 'hizli' || id === 'tekli') {
-      prodTimer = setInterval(prodDurumKontrol, 2000);
-      prodDurumKontrol();
-    } else if (id === 'ayarlar') {
-
-      configYukle();
-    }
+    clearInterval(prodLoopTimer);
+    if(id==='v-hizli' || id==='v-tekli') prodLoopTimer = setInterval(prodDurumKontrol, 2000);
+    if(id==='v-ayarlar') configYukle();
   }
 
-  // ---- Ayarlar ----
-  async function configYukle() {
-    try {
-      const r = await fetch('/api/config');
-      const d = await r.json();
-      document.getElementById('config-page-name').value = d.page_name || '';
-    } catch (_) {}
-  }
-
-  async function configGuncelle() {
-    const page_name = document.getElementById('config-page-name').value;
-    if (!page_name) return toast('Sayfa adı boş olamaz', 'hata');
-    
-    try {
-      const r = await fetch('/api/config/update', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page_name })
-      });
-      if (r.ok) {
-        toast('Ayarlar güncellendi');
-        botDurumKontrol(); // Header'daki ismi de dolaylı etkileyebilir
-      } else {
-        toast('Güncelleme hatası', 'hata');
-      }
-    } catch (e) { toast(e.message, 'hata'); }
-  }
-
-  // ---- Toast ----
-  function toast(msg, tip = 'basari') {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.className = `toast goster ${tip}`;
-    setTimeout(() => el.className = 'toast', 3500);
-  }
-
-  // ---- Filtre & Video ----
   function filtre(deger, el) {
-    aktifFiltre = deger;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('aktif'));
+    document.querySelectorAll('.badge').forEach(b => b.classList.remove('aktif'));
     el.classList.add('aktif');
+    currentFilter = deger;
     videolariGoster();
   }
 
+  async function hesaplariYukle() {
+    const r = await fetch('/api/accounts'); const accs = await r.json();
+    document.getElementById('accounts-container').innerHTML = accs.map(a => `
+      <div class="list-item" onclick="sekme('itiraf')">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
+          <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
+        </div>
+        <span style="color:var(--accent)">YÖNET →</span>
+      </div>`).join('');
+  }
+
+  async function botDurumKontrol() {
+    const modes = ['dm', 'share', 'follow'];
+    let overallActive = false;
+    for (const m of modes) {
+        try {
+            const r = await fetch(`/api/${m}_bot/status`); const d = await r.json();
+            const a = d.calisiyor; if(a) overallActive = true;
+            document.getElementById(`${m}-bot-dot`).className = 'dot' + (a ? ' aktif' : '');
+            document.getElementById(`btn-${m}-start`).style.display = a ? 'none' : '';
+            document.getElementById(`btn-${m}-stop`).style.display = a ? '' : 'none';
+            logGuncelle(m);
+        } catch(e){}
+    }
+    document.getElementById('header-dot').className = 'dot' + (overallActive ? ' aktif' : '');
+    document.getElementById('header-durum').textContent = overallActive ? 'Botlar Çalışıyor' : 'Sistem Hazır';
+    
+    // Stats refresh on each check
+    configYukle();
+  }
+
+  async function logGuncelle(m) {
+    try {
+      const r = await fetch(`/api/${m}_bot/logs?satirlar=50`); const d = await r.json();
+      const ek = document.getElementById(`${m}-log-ekran`);
+      if (d.satirlar.length === sonLogs[m]) return; sonLogs[m] = d.satirlar.length;
+      ek.innerHTML = d.satirlar.map(s => `<p class="log-satir">${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`).join('');
+      ek.scrollTop = ek.scrollHeight;
+    } catch (_) {}
+  }
+
+  async function prodDurumKontrol() {
+    try {
+      const r = await fetch('/api/production/status'); const d = await r.json();
+      const html = (d.logs || []).map(s => `<p class="log-satir">${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`).join('');
+      
+      ['prod-log-ekran', 'single-log-ekran'].forEach(id => {
+          const ek = document.getElementById(id);
+          if(ek) {
+              const wasBottom = ek.scrollTop + ek.clientHeight >= ek.scrollHeight - 20;
+              ek.innerHTML = html;
+              if (wasBottom) ek.scrollTop = ek.scrollHeight;
+          }
+      });
+    } catch (_) {}
+  }
+
+  async function botStart(m) { 
+    let url = `/api/${m}_bot/start`;
+    if(m==='follow') url += `?target=${encodeURIComponent(document.getElementById('follow-target').value)}`;
+    await fetch(url, {method:'POST'}); toast('Başlatıldı'); setTimeout(botDurumKontrol, 1000);
+  }
+  async function botStop(m) { await fetch(`/api/${m}_bot/stop`, {method:'POST'}); toast('Durduruldu'); setTimeout(botDurumKontrol, 1000); }
+  async function logTemizle(m) { await fetch(`/api/${m}_bot/logs/clear`, {method:'POST'}); document.getElementById(`${m}-log-ekran`).innerHTML = ''; sonLogs[m] = 0; }
+  
+  async function videoYukle() { const r=await fetch('/api/videos'); tumVideolar=await r.json(); videolariGoster(); }
+  
   function videolariGoster() {
     const grid = document.getElementById('video-grid');
-    let liste = tumVideolar;
-    if (aktifFiltre !== 'hepsi') {
-      liste = tumVideolar.filter(v => v.durum === aktifFiltre);
-    }
-    document.getElementById('toolbar-bilgi').textContent = `${liste.length} video`;
-
+    const liste = currentFilter === 'hepsi' ? tumVideolar : tumVideolar.filter(v => v.durum === currentFilter);
+    if(!liste.length) { grid.innerHTML = '<p style="color:var(--text2)">Henüz video yok.</p>'; return; }
+    
     grid.innerHTML = liste.map(v => {
-      const paylasıldi = v.durum === 'paylasıldı';
-      const planli = v.planlanan_paylasim && !paylasıldi;
-      const planliZamani = planli ? new Date(v.planlanan_paylasim).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
-      
-      const videoHtml = paylasıldi 
-        ? `<div style="width:100%; aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; flex-direction:column; color:#555; font-size:12px; text-align:center; padding:20px;">
-             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:10px; opacity:0.3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-             VİDEO PAYLAŞILDI<br>Dosya Sistemden Silindi
-           </div>`
-        : `<video controls preload="metadata"><source src="/output/${v.dosya}" type="video/mp4"></video>`;
-
+      const p = v.durum === 'paylasıldı';
       return `
         <div class="video-kart">
-          ${videoHtml}
+          ${p ? '<div style="aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">PAYLAŞILDI</div>' : `<video controls src="/output/${v.dosya}"></video>`}
           <div class="kart-body">
-            <div class="kart-meta">
-              <span class="badge">${v.kategori}</span>
-              <span class="badge badge-durum ${paylasıldi ? 'badge-paylasıldı' : 'badge-bekliyor'}">
-                ${paylasıldi ? 'Paylasıldı' : (planli ? 'Zamanlandı: ' + planliZamani : 'Bekliyor')}
-              </span>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span class="badge">${v.kategori}</span>
+                <span class="badge badge-durum badge-${v.durum}">${v.durum}</span>
             </div>
-            <div class="itiraf-metin">${escHtml(v.itiraf)}</div>
-            ${v.admin_reply ? `<div class="itiraf-metin" style="color: var(--accent); margin-top: -4px;"><b>Admin:</b> ${escHtml(v.admin_reply)}</div>` : ''}
-            <div style="position: relative;">
-              <div class="caption-metin" title="Paylaşım Metni">${escHtml(v.caption)}</div>
-              <button class="kopyala-btn" onclick="kopyala('${escJs(v.caption)}')">Kopyala</button>
-            </div>
-            <button class="paylas-btn ${paylasıldi ? 'paylasıldi' : ''}" onclick="paylas('${v.id}', this)" ${paylasıldi ? 'disabled' : ''}>
-              ${paylasıldi ? 'Paylasıldı' : "Instagram'a Paylas"}
-            </button>
-            <div class="kart-aksiyonlar">
-              <button class="ikincil-btn" onclick="markShared('${v.id}')" ${paylasıldi ? 'style="display:none"' : ''}>İşaretle</button>
-              <button class="sil-btn" onclick="videoSil('${v.id}')">Sil</button>
-            </div>
+            <p style="font-size:12px;height:45px;overflow:hidden">${v.itiraf}</p>
+            <button class="btn btn-yesil" style="width:100%;margin-top:10px" onclick="paylas('${v.id}')" ${p ? 'disabled' : ''}>${p ? 'Paylaşıldı' : 'Paylaş'}</button>
           </div>
         </div>`;
     }).join('');
   }
 
-  async function videoYukle() {
-    try {
-      const r = await fetch('/api/videos');
-      tumVideolar = await r.json();
-      document.getElementById('video-sayac').textContent = `(${tumVideolar.length})`;
-      videolariGoster();
-    } catch (_) {}
-  }
-
-  async function paylas(videoId, btn) {
-    if (!confirm("Paylasmak istiyor musunuz?")) return;
-    btn.disabled = true; btn.textContent = 'Paylasiliyor...';
-    try {
-      const r = await fetch(`/api/paylas/${videoId}`, { method: 'POST' });
-      if (r.ok) { toast('Basarili!'); videoYukle(); }
-      else { toast('Hata!', 'hata'); btn.disabled = false; }
-    } catch (e) { toast(e.message, 'hata'); btn.disabled = false; }
-  }
-
-  async function videoSil(videoId) {
-    if (!confirm("Bu videoyu silmek istediğinize emin misiniz? (Dosya ve kayıt tamamen silinecektir)")) return;
-    try {
-      const r = await fetch(`/api/videos/${videoId}`, { method: 'DELETE' });
-      if (r.ok) {
-        toast('Video silindi');
-        videoYukle();
-      } else {
-        toast('Silme hatası!', 'hata');
-      }
-    } catch (e) {
-      toast(e.message, 'hata');
-    }
-  }
-
-  async function markShared(videoId) {
-    if (!confirm("Bu videoyu manuel olarak paylaşıldı işaretlemek istiyor musunuz? (Dosya silinecektir)")) return;
-    try {
-      const r = await fetch(`/api/mark_shared/${videoId}`, { method: 'POST' });
-      if (r.ok) {
-        toast('Paylaşıldı işaretlendi');
-        videoYukle();
-      } else {
-        toast('Hata oluştu!', 'hata');
-      }
-    } catch (e) {
-      toast(e.message, 'hata');
-    }
-  }
-
-  // ---- Bot Islemleri ----
-  async function botDurumKontrol() {
-    // DM Bot
-    try {
-      const r_dm = await fetch('/api/dm_bot/status');
-      const d_dm = await r_dm.json();
-      const dm_aktif = d_dm.calisiyor;
-      document.getElementById('dm-bot-dot').className = 'dot' + (dm_aktif ? ' aktif' : '');
-      document.getElementById('dm-bot-durum-yazisi').textContent = dm_aktif ? 'Aktif' : 'Durdu';
-      document.getElementById('btn-dm-start').style.display = dm_aktif ? 'none' : '';
-      document.getElementById('btn-dm-stop').style.display = dm_aktif ? '' : 'none';
-    } catch (_) {}
-
-    // Share Bot
-    try {
-      const r_sh = await fetch('/api/share_bot/status');
-      const d_sh = await r_sh.json();
-      const sh_aktif = d_sh.calisiyor;
-      document.getElementById('share-bot-dot').className = 'dot' + (sh_aktif ? ' aktif' : '');
-      document.getElementById('share-bot-durum-yazisi').textContent = sh_aktif ? 'Aktif' : 'Durdu';
-      document.getElementById('btn-share-start').style.display = sh_aktif ? 'none' : '';
-      document.getElementById('btn-share-stop').style.display = sh_aktif ? '' : 'none';
-    } catch (_) {}
-
-    // Follow Bot
-    try {
-      const r_f = await fetch('/api/follow_bot/status');
-      const d_f = await r_f.json();
-      const f_aktif = d_f.calisiyor;
-      document.getElementById('follow-bot-dot').className = 'dot' + (f_aktif ? ' aktif' : '');
-      document.getElementById('follow-bot-durum-yazisi').textContent = f_aktif ? 'Aktif' : 'Durdu';
-      document.getElementById('btn-follow-start').style.display = f_aktif ? 'none' : '';
-      document.getElementById('btn-follow-stop').style.display = f_aktif ? '' : 'none';
-      document.getElementById('follow-target').disabled = f_aktif;
-
-      const rs = await fetch('/api/follow/stats');
-      const ds = await rs.json();
-      document.getElementById('stat-followed').textContent = ds.followed || 0;
-      document.getElementById('stat-followers').textContent = ds.followers || 0;
-      document.getElementById('stat-following').textContent = ds.following || 0;
-      if (document.getElementById('stat-views')) {
-        document.getElementById('stat-views').textContent = (ds.avg_views || 0).toLocaleString('tr-TR');
-      }
-    } catch (_) {}
-
-    const headerAktif = document.getElementById('dm-bot-dot').classList.contains('aktif') || 
-                        document.getElementById('share-bot-dot').classList.contains('aktif') || 
-                        document.getElementById('follow-bot-dot').classList.contains('aktif');
-    document.getElementById('header-dot').className = 'dot' + (headerAktif ? ' aktif' : '');
-    document.getElementById('header-durum').textContent = headerAktif ? 'Botlar Çalışıyor' : 'Botlar Durdu';
-  }
-
-  async function botStart(mode) {
-    const target = mode === 'follow' ? document.getElementById('follow-target').value : '';
-    if (mode === 'follow' && !target) { toast('Hedef kullanıcı girin!', 'hata'); return; }
-    
-    try {
-      let url = `/api/${mode}_bot/start`;
-      if (mode === 'follow') url += `?target=${encodeURIComponent(target)}`;
-      await fetch(url, { method: 'POST' });
-      toast('Bot baslatildi');
-      setTimeout(botDurumKontrol, 1000);
-    } catch (e) { toast(e.message, 'hata'); }
-  }
-
-  async function botStop(mode) {
-    try {
-      await fetch(`/api/${mode}_bot/stop`, { method: 'POST' });
-      toast('Bot durduruldu');
-      setTimeout(botDurumKontrol, 1000);
-    } catch (e) { toast(e.message, 'hata'); }
-  }
-
-  async function logGuncelle(mode) {
-    try {
-      const r = await fetch(`/api/${mode}_bot/logs?satirlar=150`);
-      const d = await r.json();
-      const ekran = document.getElementById(`${mode}-log-ekran`);
-      const satirlar = d.satirlar || [];
-
-      if (satirlar.length === sonLogs[mode]) return;
-      sonLogs[mode] = satirlar.length;
-
-      const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
-      ekran.innerHTML = satirlar.map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
-      if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
-    } catch (_) {}
-  }
-
-  async function logTemizle(mode) {
-    try {
-      await fetch(`/api/${mode}_bot/logs/clear`, { method: 'POST' });
-      document.getElementById(`${mode}-log-ekran`).innerHTML = '';
-      sonLogs[mode] = 0;
-      toast('Loglar temizlendi');
-    } catch (e) {
-      toast('Log temizleme hatası', 'hata');
-    }
-  }
-
-  // ---- Uretim Islemleri ----
-  async function prodDurumKontrol() {
-    try {
-      const r = await fetch('/api/production/status');
-      const d = await r.json();
-      const aktif = d.status === 'running';
-      document.getElementById('prod-dot').className = 'dot' + (aktif ? ' aktif' : '');
-      document.getElementById('prod-durum-yazisi').textContent = aktif ? 'Üretiliyor' : 'Boşta';
-      document.getElementById('prod-ilerleme').textContent = `${d.progress} | Hata: ${d.failed}`;
-      document.getElementById('btn-prod-stop').style.display = aktif ? '' : 'none';
-      document.getElementById('btn-prod-baslat').disabled = aktif;
-      
-      const logsHtml = (d.logs || []).map(s => `<p class="log-satir">${escHtml(s)}</p>`).join('');
-      
-      const ekran = document.getElementById('prod-log-ekran');
-      if (ekran) {
-        const wasBottom = ekran.scrollTop + ekran.clientHeight >= ekran.scrollHeight - 20;
-        ekran.innerHTML = logsHtml;
-        if (wasBottom) ekran.scrollTop = ekran.scrollHeight;
-      }
-
-      const singleEkran = document.getElementById('single-log-ekran');
-      if (singleEkran) {
-        const wasBottomSingle = singleEkran.scrollTop + singleEkran.clientHeight >= singleEkran.scrollHeight - 20;
-        singleEkran.innerHTML = logsHtml;
-        if (wasBottomSingle) singleEkran.scrollTop = singleEkran.scrollHeight;
-      }
-    } catch (_) {}
-  }
-
-  async function hizliUret() {
-    const input = document.getElementById('json-input').value;
-    try {
-      const data = JSON.parse(input);
-      const r = await fetch('/api/generate_from_json', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (r.ok) { toast('Uretim basladi'); document.getElementById('json-input').value = ''; }
-      else { toast('Hata!', 'hata'); }
-    } catch (_) { toast('Gecersiz JSON', 'hata'); }
-  }
-
+  async function paylas(id) { await fetch(`/api/paylas/${id}`, {method:'POST'}); toast('Paylaşım başladı'); }
+  
   async function tekliUret() {
-    const text = document.getElementById('single-text').value;
-    const persona = document.getElementById('single-persona').value;
-    const theme = document.getElementById('single-theme').value;
-    const admin_reply = document.getElementById('single-admin-reply').value;
-    const share = document.getElementById('single-share').checked;
-
-    if (!text) return toast('Metin boş olamaz!', 'hata');
-
-    const btn = document.getElementById('btn-single-start');
-    btn.disabled = true;
-    btn.textContent = 'İşlem Başlatıldı...';
-
-    try {
-      const r = await fetch('/api/generate_single', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, persona, theme, admin_reply, share })
-      });
-      
-      if (r.ok) {
-        toast('İşlem arka planda başlatıldı. Videolar sekmesinden takip edebilirsiniz.');
-        document.getElementById('single-text').value = '';
-        document.getElementById('single-admin-reply').value = '';
-      } else {
-        toast('Bir hata oluştu!', 'hata');
-      }
-    } catch (e) {
-      toast(e.message, 'hata');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Üretimi Başlat';
-    }
+    const text=document.getElementById('single-text').value; const persona=document.getElementById('single-persona').value;
+    const theme=document.getElementById('single-theme').value; const admin_reply=document.getElementById('single-admin-reply').value;
+    const share=document.getElementById('single-share').checked;
+    await fetch('/api/generate_single', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text,persona,theme,admin_reply,share})});
+    toast('Üretim başladı');
   }
 
-  function jsonOrnek() {
-    const ornek = {
-      "confessions": [
-        {
-          "persona": "anonim_birisi",
-          "theme": "iliski",
-          "text": "Buraya itiraf metni gelecek...",
-          "admin_reply": "Admin buraya cevap yazacak..."
+  async function hizliUret() { await fetch('/api/generate_from_json', {method:'POST', headers:{'Content-Type':'application/json'}, body:document.getElementById('json-input').value}); toast('Üretim başladı'); }
+  
+  async function configYukle() { 
+    try { 
+        // Load stats
+        const rs = await fetch('/api/extended_stats');
+        const ds = await rs.json();
+        document.getElementById('ext-followers').textContent = ds.followers.toLocaleString('tr-TR');
+        document.getElementById('ext-avg-views').textContent = ds.avg_views.toLocaleString('tr-TR');
+        document.getElementById('ext-total-videos').textContent = ds.total_videos;
+        document.getElementById('ext-shared-videos').textContent = ds.shared_videos;
+
+        // Load account info
+        const ra = await fetch('/api/accounts');
+        const accs = await ra.json();
+        const def = accs.find(a => a.id === 'default');
+        if(def) {
+            document.getElementById('active-acc-username').value = def.username;
+            document.getElementById('active-acc-password').value = def.password;
+            document.getElementById('active-acc-pagename').value = def.page_name;
         }
-      ]
-    };
-    document.getElementById('json-input').value = JSON.stringify(ornek, null, 2);
+    } catch(_){} 
   }
 
-  function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-  function escJs(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r'); }
-
-  async function kopyala(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast('Metin kopyalandı!');
-    } catch (err) {
-      toast('Kopyalama başarısız!', 'hata');
-    }
+  async function hesapBilgisiGuncelle() {
+    const username = document.getElementById('active-acc-username').value;
+    const password = document.getElementById('active-acc-password').value;
+    const page_name = document.getElementById('active-acc-pagename').value;
+    
+    const r = await fetch('/api/account/update', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({username, password, page_name})
+    });
+    if(r.ok) toast('Bilgiler güncellendi');
   }
 
-  async function shareStory() {
-    if (!confirm("Etkileşim Story'si paylaşılsın mı?")) return;
-    const btn = document.getElementById('btn-story-share');
-    btn.disabled = true; btn.textContent = 'İşlem Başlatıldı...';
-    try {
-      const r = await fetch('/api/story/share', { method: 'POST' });
-      const d = await r.json();
-      if (r.ok) {
-        toast(`Story sıraya alındı: "${d.cumle.substring(0, 20)}..."`);
-        sekme('tekli', document.querySelector('.tab[onclick*="tekli"]'));
-      } else { toast('Hata!', 'hata'); }
-    } catch (e) { toast(e.message, 'hata'); }
-    finally {
-      btn.disabled = false;
-      btn.textContent = 'Şu Anki Sıradaki Story\'yi Paylaş';
-    }
+  async function shareStory() { await fetch('/api/story/share', {method:'POST'}); toast('Story sıraya alındı'); }
+  
+  async function hesapEkle() {
+    const username=document.getElementById('new-acc-username').value; const password=document.getElementById('new-acc-password').value;
+    const page_name=document.getElementById('new-acc-pagename').value;
+    await fetch('/api/accounts/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password,page_name})});
+    toast("Hesap eklendi"); sekme('itiraf-accounts');
   }
-
-  // Başlangıç
-  videoYukle();
-  botDurumKontrol();
-  setInterval(botDurumKontrol, 5000);
 </script>
 </body>
 </html>
