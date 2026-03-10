@@ -2,7 +2,7 @@ import os
 import textwrap
 import numpy as np
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from config import (
     VIDEO_GENISLIK, VIDEO_YUKSEKLIK, VIDEO_FPS, VIDEO_SURE,
@@ -36,8 +36,8 @@ def _font_yukle(boyut: int, emoji: bool = False) -> ImageFont.FreeTypeFont | Ima
     return ImageFont.load_default()
 
 
-def _yuvarlatilmis_dikdortgen(draw, xy, radius, fill, outline=None):
-    draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=2)
+def _yuvarlatilmis_dikdortgen(draw, xy, radius, fill, outline=None, width=2):
+    draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=width)
 
 
 def _metin_sar(metin: str, max_karakter: int = 32) -> list[str]:
@@ -60,25 +60,94 @@ class VideoGenerator:
         self.f_saat = _font_yukle(22)
         self.f_input = _font_yukle(30)
 
-    def _get_text_width(self, draw, text):
-        """Karakter bazlı genişlik ölçümü (Emoji + Latin karma)."""
-        w = 0
-        for char in text:
-            f = self.f_emoji if ord(char) > 0xFFFF else self.f_metin
-            bbox = draw.textbbox((0, 0), char, font=f, embedded_color=True)
-            w += (bbox[2] - bbox[0])
-        return w
+    def _get_text_width(self, draw, text, font=None):
+        f = font if font else (self.f_emoji if any(ord(c) > 0xFFFF for c in text) else self.f_metin)
+        bbox = draw.textbbox((0, 0), text, font=f, embedded_color=True)
+        return bbox[2] - bbox[0]
 
-    def _draw_mixed_text(self, draw, xy, text, is_admin=False):
-        """Harf harf font seçerek çizim yapar (Kutucuk sorununu çözer)."""
+    def _draw_mixed_text(self, draw, xy, text, font=None, center=False):
         x, y = xy
+        if center:
+            total_w = self._get_text_width(draw, text, font)
+            x = (VIDEO_GENISLIK - total_w) // 2
+
         for char in text:
             is_e = ord(char) > 0xFFFF
-            f = self.f_emoji if is_e else self.f_metin
+            f = self.f_emoji if is_e else (font if font else self.f_metin)
             color = None if is_e else RENKLER["beyaz"]
             draw.text((x, y), char, font=f, fill=color, embedded_color=True)
             bbox = draw.textbbox((0, 0), char, font=f, embedded_color=True)
             x += (bbox[2] - bbox[0])
+
+    def story_olustur(self, metin: str, cikti_yolu: str) -> str:
+        """Premium Mesh Gradient ve Glassmorphism efektli Story."""
+        print(f"  [Story] Tasarlanıyor: {metin[:20]}...")
+        
+        # Instagram Estetiği Renk Paleti
+        c1, c2 = (131, 58, 180), (253, 29, 29) # Mor -> Kırmızı
+        c3, c4 = (252, 176, 69), (10, 10, 10)  # Turuncu -> Siyah
+        
+        f_story_main = _font_yukle(75)
+        f_story_badge = _font_yukle(40)
+        f_story_header = _font_yukle(30)
+
+        frameler = []
+        for i in range(150): # 5 Saniye
+            # 1. Arka Plan: Mesh Gradient Simülasyonu
+            img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
+            draw = ImageDraw.Draw(img)
+            
+            for y in range(VIDEO_YUKSEKLIK):
+                # Yatay ve dikey karmaşık gradyan
+                ratio_y = y / VIDEO_YUKSEKLIK
+                r = int(c1[0]*(1-ratio_y) + c4[0]*ratio_y)
+                g = int(c1[1]*(1-ratio_y) + c4[1]*ratio_y)
+                b = int(c1[2]*(1-ratio_y) + c4[2]*ratio_y)
+                draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(r, g, b))
+
+            # 2. Glassmorphism Panel
+            # Hafif beyazımsı transparan kutu
+            panel_margin = 80
+            panel_y0 = 450
+            panel_y1 = 1250
+            # PIL'de gerçek blur için maske gerekir, burada şık bir alpha kutusu yapalım
+            overlay = Image.new('RGBA', (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), (0,0,0,0))
+            d_overlay = ImageDraw.Draw(overlay)
+            d_overlay.rounded_rectangle([panel_margin, panel_y0, VIDEO_GENISLIK - panel_margin, panel_y1], radius=50, fill=(255, 255, 255, 30), outline=(255, 255, 255, 60), width=3)
+            img.paste(Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB'))
+            
+            # 3. İçerik Çizimi
+            # Header
+            header_txt = "✨ GÜNÜN İTİRAFI ✨"
+            self._draw_mixed_text(draw, (0, panel_y0 + 60), header_txt, font=f_story_header, center=True)
+            
+            # Ana Metin
+            satirlar = textwrap.wrap(metin, width=16)
+            line_h = 95
+            curr_y = panel_y0 + 180
+            for s in satirlar:
+                self._draw_mixed_text(draw, (0, curr_y), s, font=f_story_main, center=True)
+                curr_y += line_h
+            
+            # 4. "Soru Sticker" Tasarımı
+            sticker_w, sticker_h = 500, 140
+            sx0 = (VIDEO_GENISLIK - sticker_w) // 2
+            sy0 = panel_y1 - 100
+            _yuvarlatilmis_dikdortgen(draw, (sx0, sy0, sx0 + sticker_w, sy0 + sticker_h), 40, fill=(255,255,255), outline=(200,200,200))
+            
+            sticker_txt = "İTİRAFINI YAZ..."
+            st_f = _font_yukle(35)
+            tw = self._get_text_width(draw, sticker_txt, st_f)
+            draw.text((sx0 + (sticker_w - tw)//2, sy0 + 45), sticker_txt, font=st_f, fill=(80,80,80))
+            
+            # 5. Alt Etiket
+            draw.text((panel_margin + 20, panel_y1 + 40), f"@{self.sayfa_adi}", font=f_story_header, fill=(255,255,255,180))
+
+            frameler.append(np.array(img))
+
+        klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
+        klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
+        return cikti_yolu
 
     def frame_olustur(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
         img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), RENKLER["arka_plan"])
@@ -87,13 +156,12 @@ class VideoGenerator:
         self._ciz_header(draw)
         self._ciz_ust_bilgi(draw)
 
-        # HIZ AYARLARI
-        anim_itiraf = 150 # 5sn
+        anim_itiraf = 150 
         it_gost = metin[:max(1, int(len(metin) * frame_no / anim_itiraf))] if frame_no < anim_itiraf else metin
         y1_conf = self._ciz_balon(draw, it_gost, gonderen, 230, metin, is_admin=False)
 
         if admin_reply and frame_no >= 180:
-            anim_admin = 45 # 1.5sn (HIZLI)
+            anim_admin = 45 
             rel_f = frame_no - 180
             ad_gost = admin_reply[:max(1, int(len(admin_reply) * rel_f / anim_admin))] if rel_f < anim_admin else admin_reply
             self._ciz_balon(draw, ad_gost, self.sayfa_adi, y1_conf + 70, admin_reply, is_admin=True)
@@ -105,36 +173,28 @@ class VideoGenerator:
         margin = 45
         max_w = int(VIDEO_GENISLIK * 0.75)
         line_h = 50
-
-        # Boyutu en baştan TAM METNE göre sabitliyoruz
         satirlar_iskelet = _metin_sar(tam_metin, max_karakter=28)
         balon_w = min(max((self._get_text_width(draw, s) for s in satirlar_iskelet), default=100) + 60, max_w)
         balon_h = len(satirlar_iskelet) * line_h + 55
-
         if is_admin:
             x1 = VIDEO_GENISLIK - margin
             x0 = x1 - balon_w
             fill, outline = (10, 80, 180), (30, 120, 255)
-            # Etiketi sağa yasla
             label_w = draw.textbbox((0,0), etiket, font=self.f_gonderen)[2]
             draw.text((x1 - label_w - 5, y0 - 35), etiket, font=self.f_gonderen, fill=RENKLER["mavi"])
         else:
             x0, x1 = margin, margin + balon_w
             fill, outline = RENKLER["balon_bg"], RENKLER["balon_kenarlik"]
             draw.text((x0 + 5, y0 - 35), etiket, font=self.f_gonderen, fill=RENKLER["gri_acik"])
-
         y1 = y0 + balon_h
         _yuvarlatilmis_dikdortgen(draw, (x0, y0, x1, y1), 25, fill, outline)
-
-        # Yazıyı satır satır ve karakter karakter çiz
         curr_idx = 0
         target_idx = len(gosterilen_metin)
         for i, satir in enumerate(satirlar_iskelet):
             if curr_idx >= target_idx: break
             line_to_draw = satir[:target_idx - curr_idx]
-            self._draw_mixed_text(draw, (x0 + 28, y0 + 22 + i * line_h), line_to_draw, is_admin)
+            self._draw_mixed_text(draw, (x0 + 28, y0 + 22 + i * line_h), line_to_draw)
             curr_idx += len(satir) + 1
-
         if not is_admin:
             draw.text((x0 + 5, y1 + 8), "13:37", font=self.f_saat, fill=RENKLER["gri_koyu"])
         return y1
@@ -164,91 +224,20 @@ class VideoGenerator:
         draw.ellipse([btn_cx-38, btn_cy-38, btn_cx+38, btn_cy+38], fill=RENKLER["mavi"])
         draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
-    def story_olustur(self, metin: str, cikti_yolu: str) -> str:
-        """Minimalist ve şık bir Story (CTA) videosu üretir."""
-        print(f"  [Story] Üretiliyor: {metin[:30]}...")
-        
-        # Gradyan Arka Plan Renkleri (Instagram tarzı Mor-Turuncu karma)
-        color_top = (131, 58, 180) # Mor
-        color_bottom = (253, 29, 29) # Kırmızı/Turuncu
-        
-        frameler = []
-        # Story 5 saniye olsun (150 frame)
-        for i in range(150):
-            img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
-            draw = ImageDraw.Draw(img)
-            
-            # Basit dikey gradyan çizimi
-            for y in range(VIDEO_YUKSEKLIK):
-                r = int(color_top[0] + (color_bottom[0] - color_top[0]) * y / VIDEO_YUKSEKLIK)
-                g = int(color_top[1] + (color_bottom[1] - color_top[1]) * y / VIDEO_YUKSEKLIK)
-                b = int(color_top[2] + (color_bottom[2] - color_top[2]) * y / VIDEO_YUKSEKLIK)
-                draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(r, g, b))
-            
-            # Metin sarma
-            satirlar = textwrap.wrap(metin, width=18) # Story'de daha büyük yazı
-            f_story = _font_yukle(80) # Çok büyük font
-            f_story_emoji = _font_yukle(80, emoji=True)
-            
-            total_h = len(satirlar) * 100
-            curr_y = (VIDEO_YUKSEKLIK - total_h) // 2
-            
-            # Metni merkeze çiz
-            for satir in satirlar:
-                line_w = self._get_text_width(draw, satir)
-                curr_x = (VIDEO_GENISLIK - line_w) // 2
-                self._draw_mixed_text(draw, (curr_x, curr_y), satir)
-                curr_y += 100
-            
-            # Alt kısma sabit "DM AT" etiketi
-            draw.rectangle([300, VIDEO_YUKSEKLIK - 300, 780, VIDEO_YUKSEKLIK - 180], fill=(255,255,255), outline=(255,255,255))
-            bbox_dm = draw.textbbox((0,0), "DM'DEN YAZ", font=self.f_input)
-            draw.text(((VIDEO_GENISLIK-(bbox_dm[2]-bbox_dm[0]))//2, VIDEO_YUKSEKLIK-265), "DM'DEN YAZ", font=self.f_input, fill=(0,0,0))
-            
-            frameler.append(np.array(img))
-
-        klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
-        klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
-        return cikti_yolu
+    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
         import subprocess
         print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
-        
-        # 1. Sessiz videoyu üret
         frameler = [self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
-        
         sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
         klip.write_videofile(sessiz_video, fps=VIDEO_FPS, codec="libx264", logger=None)
-        
-        # 2. Müzik seç
         muzik_yolu = muzik_sec(tema)
-        
         if muzik_yolu and os.path.exists(muzik_yolu):
-            print(f"  [FFmpeg] Sesi videoya ekliyor: {os.path.basename(muzik_yolu)}")
             try:
-                # FFmpeg Komutu: Sesi döngüye sok, videonun süresine kes ve birleştir
-                cmd = [
-                    'ffmpeg', '-y',
-                    '-i', sessiz_video,
-                    '-stream_loop', '-1', '-i', muzik_yolu,
-                    '-c:v', 'copy',
-                    '-c:a', 'aac', '-b:a', '192k',
-                    '-filter_complex', '[1:a]volume=0.30[a]', # Sesi biraz daha artırdım
-                    '-map', '0:v:0', '-map', '[a]',
-                    '-shortest', # Video bitince dur
-                    cikti_yolu
-                ]
+                cmd = ['ffmpeg', '-y', '-i', sessiz_video, '-stream_loop', '-1', '-i', muzik_yolu, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-filter_complex', '[1:a]volume=0.30[a]', '-map', '0:v:0', '-map', '[a]', '-shortest', cikti_yolu]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                print("  [FFmpeg] Ses başarıyla eklendi.")
-                
-                # Geçici sessiz videoyu sil
                 if os.path.exists(sessiz_video): os.remove(sessiz_video)
                 return cikti_yolu
-            except Exception as e:
-                print(f"  [FFmpeg] HATA: {e}")
-                os.rename(sessiz_video, cikti_yolu) # Hata olursa sessiz kalsın ama dosya olsun
-        else:
-            print("  [Video] Müzik bulunamadı, sessiz kaydediliyor.")
-            os.rename(sessiz_video, cikti_yolu)
-            
+            except: os.rename(sessiz_video, cikti_yolu)
+        else: os.rename(sessiz_video, cikti_yolu)
         return cikti_yolu
