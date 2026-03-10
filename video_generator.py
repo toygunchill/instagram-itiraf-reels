@@ -164,39 +164,46 @@ class VideoGenerator:
         draw.ellipse([btn_cx-38, btn_cy-38, btn_cx+38, btn_cy+38], fill=RENKLER["mavi"])
         draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
-    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None):
+    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
+        import subprocess
         print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
+        
+        # 1. Sessiz videoyu üret
         frameler = [self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
         
+        sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
+        klip.write_videofile(sessiz_video, fps=VIDEO_FPS, codec="libx264", logger=None)
+        
+        # 2. Müzik seç
         muzik_yolu = muzik_sec(tema)
-        if muzik_yolu:
-            print(f"  [Video] Müzik bulundu: {os.path.basename(muzik_yolu)}")
+        
+        if muzik_yolu and os.path.exists(muzik_yolu):
+            print(f"  [FFmpeg] Sesi videoya ekliyor: {os.path.basename(muzik_yolu)}")
             try:
-                audio = AudioFileClip(muzik_yolu)
-                # Müzik videodan kısaysa döngüye sok, uzunsa kes
-                if audio.duration < VIDEO_SURE:
-                    from moviepy import afx
-                    audio = audio.with_effects([afx.AudioLoop(duration=VIDEO_SURE)])
-                else:
-                    audio = audio.subclipped(0, VIDEO_SURE)
+                # FFmpeg Komutu: Sesi döngüye sok, videonun süresine kes ve birleştir
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-i', sessiz_video,
+                    '-stream_loop', '-1', '-i', muzik_yolu,
+                    '-c:v', 'copy',
+                    '-c:a', 'aac', '-b:a', '192k',
+                    '-filter_complex', '[1:a]volume=0.30[a]', # Sesi biraz daha artırdım
+                    '-map', '0:v:0', '-map', '[a]',
+                    '-shortest', # Video bitince dur
+                    cikti_yolu
+                ]
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print("  [FFmpeg] Ses başarıyla eklendi.")
                 
-                audio = audio.with_volume_scaled(0.25) # Sesi biraz daha artırdım (0.20 -> 0.25)
-                klip = klip.with_audio(audio)
-                print("  [Video] Müzik başarıyla eklendi.")
+                # Geçici sessiz videoyu sil
+                if os.path.exists(sessiz_video): os.remove(sessiz_video)
+                return cikti_yolu
             except Exception as e:
-                print(f"  [Video] Müzik ekleme hatası: {str(e)}")
+                print(f"  [FFmpeg] HATA: {e}")
+                os.rename(sessiz_video, cikti_yolu) # Hata olursa sessiz kalsın ama dosya olsun
         else:
-            print("  [Video] UYARI: Bu tema için müzik dosyası bulunamadı!")
-
-        print(f"  [Video] Dosya kaydediliyor: {os.path.basename(cikti_yolu)}")
-        klip.write_videofile(
-            cikti_yolu, 
-            fps=VIDEO_FPS, 
-            codec="libx264", 
-            audio_codec="aac", 
-            temp_audiofile="temp-audio.m4a", # Ses için geçici dosya kullan
-            remove_temp=True,                # İşlem bitince temizle
-            logger=None
-        )
+            print("  [Video] Müzik bulunamadı, sessiz kaydediliyor.")
+            os.rename(sessiz_video, cikti_yolu)
+            
         return cikti_yolu
