@@ -156,7 +156,7 @@ class InstagramBot:
     # ---- Görevler ----
 
     def hedef_takipcilerini_cek(self, hedef_kullanici_adi: str):
-        if self.follow_queue or (datetime.now() - self.last_fetch_time).total_seconds() < 1800:
+        if self.follow_queue or (datetime.now() - self.last_fetch_time).total_seconds() < 3600:
             return
 
         log(f"'{hedef_kullanici_adi}' listesi taranıyor (Güvenli mod)...")
@@ -172,15 +172,17 @@ class InstagramBot:
             log(f"Kuyruğa {yeni} organik aday eklendi.")
         except Exception as e:
             error_msg = str(e).lower()
-            if "wait" in error_msg or "429" in error_msg:
-                log("HATA: Instagram hız sınırı. 30 dk beklenecek.")
-                self.last_fetch_time = datetime.now() + timedelta(minutes=30)
+            if "wait" in error_msg or "429" in error_msg or "<script" in error_msg:
+                log("⚠️ Instagram hız sınırı/engel koydu. 1 saat beklenecek.")
+                self.last_fetch_time = datetime.now() + timedelta(minutes=60)
             elif "login_required" in error_msg:
+                log("Oturum düştü, yeniden giriş deneniyor...")
                 self.giris_yap()
-            log(f"Liste hatası: {e}")
+            else:
+                log(f"Liste çekme hatası: {str(e)[:100]}...") # Sadece ilk 100 karakteri bas
 
     def otomasyon_takip_et(self):
-        if self.daily_stats["follows"] >= 100: return
+        if self.daily_stats["follows"] >= 80: return # Günlük sınırı biraz daha aşağı çektim güvenlik için
         if (datetime.now() - self.last_follow_time).total_seconds() < self.next_follow_delay: return
         if not self.follow_queue:
             if self.follow_target: self.hedef_takipcilerini_cek(self.follow_target)
@@ -195,8 +197,14 @@ class InstagramBot:
             self.daily_stats["follows"] += 1
             self._stats_kaydet()
             self.last_follow_time = datetime.now()
-            self.next_follow_delay = random.randint(450, 900)
-        except Exception as e: log(f"Takip hatası: {e}")
+            self.next_follow_delay = random.randint(600, 1200) # Beklemeyi biraz artırdım
+        except Exception as e:
+            err = str(e).lower()
+            if "wait" in err or "feedback_required" in err or "<script" in err:
+                log("⚠️ Takip engeli algılandı. Takip botu 2 saat dinlendiriliyor.")
+                self.last_follow_time = datetime.now() + timedelta(minutes=120)
+            else:
+                log(f"Takip hatası: {err[:100]}...")
 
     def insani_davranis_simule_et(self):
         if (datetime.now() - self.last_human_action).total_seconds() < random.randint(1200, 2400): return
