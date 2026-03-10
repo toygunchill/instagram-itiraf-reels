@@ -164,11 +164,11 @@ class VideoGenerator:
         draw.ellipse([btn_cx-38, btn_cy-38, btn_cx+38, btn_cy+38], fill=RENKLER["mavi"])
         draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
-    def video_olustur(self, metin, gonderen, kategori, cikti_yolu, admin_reply=None):
+    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None):
         print("  Video üretiliyor...")
         frameler = [self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
-        muzik_yolu = muzik_sec(kategori)
+        muzik_yolu = muzik_sec(tema)
         if muzik_yolu:
             try:
                 ses = AudioFileClip(muzik_yolu).subclipped(0, VIDEO_SURE).with_volume_scaled(0.20)

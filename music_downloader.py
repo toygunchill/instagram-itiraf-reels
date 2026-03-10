@@ -15,12 +15,14 @@ def music_download(vibe: str):
 
     # Prompt Madde 4: Vibe -> Arama Sorguları
     queries = VIBE_QUERIES.get(vibe, ["royalty free background music"])
-    query = random.choice(queries) + " no copyright background music"
+    # "short" ve "instrumental" ekleyerek daha uygun sonuçlar alalım
+    query = random.choice(queries) + " no copyright instrumental short"
     
     print(f"  [Müzik] '{vibe}' için YouTube'da aranıyor: {query}")
     
     ydl_opts = {
         'format': 'bestaudio/best',
+        # FFmpegExtractAudio post-processor .mp3 üretir
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -29,14 +31,20 @@ def music_download(vibe: str):
         'outtmpl': str(target_dir / '%(title)s.%(ext)s'),
         'quiet': True,
         'no_warnings': True,
-        'default_search': 'ytsearch1', # Sadece ilk sonucu al
-        'max_filesize': 10 * 1024 * 1024, # 10MB üstünü indirme (reels için kısa müzik yeterli)
+        'default_search': 'ytsearch1',
+        # Çok uzun videoları indirmemek için filtre (max 10 dk / 600 sn)
+        'match_filter': yt_dlp.utils.match_filter_func("duration < 600"),
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([query])
-        print(f"  [Müzik] '{vibe}' klasörüne müzik başarıyla indirildi.")
+        
+        # .webm.part gibi kalıntıları temizle (eğer indirme yarıda kesildiyse)
+        for part_file in target_dir.glob("*.part"):
+            part_file.unlink()
+            
+        print(f"  [Müzik] '{vibe}' klasörüne müzik hazır.")
         return True
     except Exception as e:
         print(f"  [Müzik] İndirme hatası: {e}")
@@ -44,4 +52,4 @@ def music_download(vibe: str):
 
 if __name__ == "__main__":
     # Test
-    music_download("genel")
+    music_download("lonely_night")

@@ -133,6 +133,7 @@ def tema_donustur(tema: str) -> str:
 
 def muzik_sec(tema: str) -> str | None:
     """Tema'ya göre uygun Vibe seçer, gerekirse indirir ve o klasörden rastgele müzik döndürür."""
+    print(f"  [Müzik] Tema analiz ediliyor: {tema}")
     # 1. Theme Analizi (Prompt Madde 1)
     tema_key = tema.lower().strip()
 
@@ -142,25 +143,32 @@ def muzik_sec(tema: str) -> str | None:
     # 3. Fallback (Prompt Madde 3)
     if not vibe_listesi:
         vibe = random.choice(FALLBACK_VIBES)
+        print(f"  [Müzik] Tema bulunamadı, fallback vibe seçildi: {vibe}")
     else:
         vibe = random.choice(vibe_listesi)
+        print(f"  [Müzik] Vibe seçildi: {vibe}")
 
     # Otomatik İndirme Adımı (Prompt Madde 9 - Internet Müzik İndir)
-    from music_downloader import music_download
-    music_download(vibe)
+    try:
+        from music_downloader import music_download
+        music_download(vibe)
+    except Exception as e:
+        print(f"  [Müzik] İndirme hatası (atlandı): {e}")
 
     # Kategori klasörü
     alt_klasor = KATEGORI_MUZIK.get(vibe, "genel")
     klasor = MUZIK_DIR / alt_klasor
-...
 
     # Müzik seçimi
     dosyalar = list(klasor.glob("*.mp3"))
     if not dosyalar:
-        # Eğer alt klasör boşsa ana müzik klasörüne bak
+        print(f"  [Müzik] '{vibe}' klasöründe müzik yok, ana klasöre bakılıyor.")
         dosyalar = list(MUZIK_DIR.glob("*.mp3"))
         
     if not dosyalar:
+        print("  [Müzik] HATA: Hiç müzik dosyası bulunamadı.")
         return None
         
-    return str(random.choice(dosyalar))
+    secilen = str(random.choice(dosyalar))
+    print(f"  [Müzik] Seçilen dosya: {Path(secilen).name}")
+    return secilen
