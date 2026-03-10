@@ -284,6 +284,17 @@ class InstagramBot:
             log(f"Paylaşım hatası: {e}")
             return False
 
+    def story_paylas(self, video_yolu: str) -> bool:
+        log(f"Story paylaşılıyor...")
+        try:
+            self.cl.video_upload_to_story(Path(video_yolu))
+            log("Story paylaşımı başarılı.")
+            if os.path.exists(video_yolu): os.remove(video_yolu)
+            return True
+        except Exception as e:
+            log(f"Story paylaşım hatası: {e}")
+            return False
+
     def planli_paylasim_kontrol(self):
         log("Planlı görevler taranıyor...")
         meta = video_manager.meta_yukle()

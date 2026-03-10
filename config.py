@@ -126,6 +126,21 @@ TEMA_HARITASI = {
 }
 
 
+# Story CTA Cümleleri
+STORY_SENTENCES = [
+    "İçinde tutma, anlat rahatla! En ilginç itirafları bekliyorum. 📩",
+    "Sırrını kimse bilmeyecek... DM'den itirafını yaz, anonim yayınlayalım! 🤐",
+    "Gecenin itirafı senden gelsin mi? DM kutusundayım. ✨",
+    "Anlatacak çok şeyin var ama kimseye söyleyemiyor musun? Biz buradayız. 💬",
+    "Bugün kimi, neyi, neden itiraf etmek istersin? DM'deyiz. 🔥",
+    "Anonim kalacağının garantisini veriyoruz. Hadi, dök içini! 📝",
+    "En bomba itirafları Reels yapıyoruz! Senin hikayen hangisi? 🎬",
+    "Bir itirafın var ama cesaretin mi yok? DM'den yaz, gerisini bize bırak. 😎",
+    "Hayat paylaştıkça, itiraflar bizde anonim kaldıkça güzel! 🌟",
+    "DM kutusu yanıyor! Sen hala itirafını göndermedin mi? 🚀"
+]
+STORY_STATE_FILE = BASE_DIR / "story_state.json"
+
 def tema_donustur(tema: str) -> str:
     """JSON'daki theme/tema degerini dahili kategori koduna donustur."""
     return TEMA_HARITASI.get(tema.lower().strip(), "genel")

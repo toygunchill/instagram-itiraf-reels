@@ -164,7 +164,52 @@ class VideoGenerator:
         draw.ellipse([btn_cx-38, btn_cy-38, btn_cx+38, btn_cy+38], fill=RENKLER["mavi"])
         draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
-    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
+    def story_olustur(self, metin: str, cikti_yolu: str) -> str:
+        """Minimalist ve şık bir Story (CTA) videosu üretir."""
+        print(f"  [Story] Üretiliyor: {metin[:30]}...")
+        
+        # Gradyan Arka Plan Renkleri (Instagram tarzı Mor-Turuncu karma)
+        color_top = (131, 58, 180) # Mor
+        color_bottom = (253, 29, 29) # Kırmızı/Turuncu
+        
+        frameler = []
+        # Story 5 saniye olsun (150 frame)
+        for i in range(150):
+            img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
+            draw = ImageDraw.Draw(img)
+            
+            # Basit dikey gradyan çizimi
+            for y in range(VIDEO_YUKSEKLIK):
+                r = int(color_top[0] + (color_bottom[0] - color_top[0]) * y / VIDEO_YUKSEKLIK)
+                g = int(color_top[1] + (color_bottom[1] - color_top[1]) * y / VIDEO_YUKSEKLIK)
+                b = int(color_top[2] + (color_bottom[2] - color_top[2]) * y / VIDEO_YUKSEKLIK)
+                draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(r, g, b))
+            
+            # Metin sarma
+            satirlar = textwrap.wrap(metin, width=18) # Story'de daha büyük yazı
+            f_story = _font_yukle(80) # Çok büyük font
+            f_story_emoji = _font_yukle(80, emoji=True)
+            
+            total_h = len(satirlar) * 100
+            curr_y = (VIDEO_YUKSEKLIK - total_h) // 2
+            
+            # Metni merkeze çiz
+            for satir in satirlar:
+                line_w = self._get_text_width(draw, satir)
+                curr_x = (VIDEO_GENISLIK - line_w) // 2
+                self._draw_mixed_text(draw, (curr_x, curr_y), satir)
+                curr_y += 100
+            
+            # Alt kısma sabit "DM AT" etiketi
+            draw.rectangle([300, VIDEO_YUKSEKLIK - 300, 780, VIDEO_YUKSEKLIK - 180], fill=(255,255,255), outline=(255,255,255))
+            bbox_dm = draw.textbbox((0,0), "DM'DEN YAZ", font=self.f_input)
+            draw.text(((VIDEO_GENISLIK-(bbox_dm[2]-bbox_dm[0]))//2, VIDEO_YUKSEKLIK-265), "DM'DEN YAZ", font=self.f_input, fill=(0,0,0))
+            
+            frameler.append(np.array(img))
+
+        klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
+        klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
+        return cikti_yolu
         import subprocess
         print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
         

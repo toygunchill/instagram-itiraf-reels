@@ -465,6 +465,48 @@ async def run_single_production(text, persona, theme, admin_reply, share):
         print(f"Tekli üretim hatası: {e}")
 
 
+@app.post("/api/story/share")
+async def share_story(background_tasks: BackgroundTasks):
+    from config import STORY_SENTENCES, STORY_STATE_FILE
+    
+    # Sıradaki cümleyi belirle
+    current_index = 0
+    if STORY_STATE_FILE.exists():
+        try:
+            state = json.loads(STORY_STATE_FILE.read_text())
+            current_index = state.get("index", 0)
+        except: pass
+    
+    sentence = STORY_SENTENCES[current_index % len(STORY_SENTENCES)]
+    
+    # Durumu güncelle
+    STORY_STATE_FILE.write_text(json.dumps({"index": current_index + 1}))
+    
+    background_tasks.add_task(run_story_production, sentence)
+    return {"status": "ok", "mesaj": "Story üretimi ve paylaşımı başlatıldı.", "cumle": sentence}
+
+async def run_story_production(sentence):
+    from production_manager import production_manager
+    production_manager.log(f"Story üretimi başlatıldı: {sentence[:30]}...")
+    try:
+        video_id = f"story_{int(datetime.now().timestamp())}"
+        video_yolu = str(OUTPUT_DIR / f"{video_id}.mp4")
+        
+        video_gen.story_olustur(sentence, video_yolu)
+        
+        production_manager.log("Story videosu üretildi, Instagram'a yükleniyor...")
+        from instagram_bot import InstagramBot
+        bot = InstagramBot()
+        bot.giris_yap()
+        if bot.story_paylas(video_yolu):
+            production_manager.log("✅ Story başarıyla paylaşıldı!")
+        else:
+            production_manager.log("❌ Story paylaşımı başarısız.")
+            
+    except Exception as e:
+        production_manager.log(f"❌ Story Hatası: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
