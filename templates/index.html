@@ -44,7 +44,7 @@
     .log-ekran { background: #000; border-radius: 10px; padding: 12px; height: 250px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
     .log-satir { color: #0f0; margin-bottom: 3px; }
     .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--text2); font-size: 11px; text-transform: uppercase; font-weight: 700; }
-    input, textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: #fff; padding: 12px; margin-bottom: 10px; }
+    input, textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: #fff; padding: 10px; font-size: 13px; outline: none; margin-bottom: 10px; }
     .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 10px 25px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
     .toast.goster { opacity: 1; }
     .back-btn { margin-bottom: 20px; cursor: pointer; color: var(--text2); font-size: 14px; font-weight: 600; display: inline-block; }
@@ -54,9 +54,6 @@
     .badge.aktif { background: var(--accent); color: #fff; }
     .badge-durum.badge-bekliyor { color: #eab308; }
     .badge-durum.badge-paylasıldı { color: var(--success); }
-    .caption-metin { font-size: 11px; color: var(--text2); background: rgba(255,255,255,0.02); padding: 6px; border-radius: 6px; margin: 8px 0; border-left: 2px solid var(--accent); position: relative; }
-    .kopyala-btn { position: absolute; right: 4px; top: 4px; font-size: 9px; background: var(--accent); color: #fff; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; opacity: 0; }
-    .caption-metin:hover .kopyala-btn { opacity: 1; }
     
     .stats-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
     .stat-box { background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
@@ -131,7 +128,6 @@
       <div class="tab" onclick="innerSekme('v-ayarlar', this)">Ayarlar</div>
     </div>
     
-    <!-- Liste -->
     <div class="inner-panel aktif" id="inner-v-liste">
         <div style="margin-bottom: 15px; display: flex; gap: 10px;">
             <button class="badge aktif" onclick="filtre('hepsi', this)">Hepsi</button>
@@ -141,7 +137,6 @@
         <div class="video-grid" id="video-grid"></div>
     </div>
 
-    <!-- Tekli -->
     <div class="inner-panel" id="inner-v-tekli">
         <div class="kutu">
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
@@ -160,17 +155,19 @@
         </div>
     </div>
 
-    <!-- Hızlı -->
     <div class="inner-panel" id="inner-v-hizli">
         <div class="kutu">
             <textarea id="json-input" placeholder="JSON yapıştırın..." style="height:200px; font-family:monospace;"></textarea>
-            <button class="btn btn-yesil" onclick="hizliUret()">Üretimi Başlat</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-yesil" onclick="hizliUret()">Üretimi Başlat</button>
+                <button class="btn" style="background:var(--surface2)" onclick="jsonOrnek()">Örnek Format</button>
+                <button class="btn" style="background:var(--danger); font-size:10px;" onclick="prodReset()">AYARLARI SIFIRLA</button>
+            </div>
             <div class="log-header" style="margin-top:20px;">Üretim Logları <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
             <div class="log-ekran" id="prod-log-ekran" style="height:200px;"></div>
         </div>
     </div>
 
-    <!-- Botlar -->
     <div class="inner-panel" id="inner-v-botlar">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
             <div class="kutu">
@@ -200,7 +197,6 @@
         </div>
     </div>
 
-    <!-- Ayarlar -->
     <div class="inner-panel" id="inner-v-ayarlar">
         <div class="stats-container">
             <div class="stat-box"><span class="stat-val" id="ext-followers">0</span><span class="stat-lbl">Takipçi</span></div>
@@ -208,18 +204,13 @@
             <div class="stat-box"><span class="stat-val" id="ext-total-videos">0</span><span class="stat-lbl">Toplam Video</span></div>
             <div class="stat-box"><span class="stat-val" id="ext-shared-videos">0</span><span class="stat-lbl">Paylaşılan</span></div>
         </div>
-        
         <div class="kutu">
             <div class="kutu-baslik">Hesap Bilgileri</div>
-            <label style="font-size: 11px; color: var(--text2);">Kullanıcı Adı / Email</label>
             <input type="text" id="active-acc-username" placeholder="Email">
-            <label style="font-size: 11px; color: var(--text2);">Şifre</label>
             <input type="password" id="active-acc-password" placeholder="Şifre">
-            <label style="font-size: 11px; color: var(--text2);">Sayfa Başlığı</label>
             <input type="text" id="active-acc-pagename" placeholder="Görünecek İsim">
-            <button class="btn btn-yesil" onclick="hesapBilgisiGuncelle()" style="width:100%; margin-top:10px;">Bilgileri Güncelle</button>
+            <button class="btn btn-yesil" onclick="hesapBilgisiGuncelle()" style="width:100%">Bilgileri Güncelle</button>
         </div>
-        
         <div class="kutu">
             <div class="kutu-baslik">Hızlı Etkileşim</div>
             <button class="btn btn-yesil" onclick="shareStory()" style="width:100%">Sıradaki Story'yi Paylaş</button>
@@ -264,15 +255,17 @@
   }
 
   async function hesaplariYukle() {
-    const r = await fetch('/api/accounts'); const accs = await r.json();
-    document.getElementById('accounts-container').innerHTML = accs.map(a => `
-      <div class="list-item" onclick="sekme('itiraf')">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
-          <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
-        </div>
-        <span style="color:var(--accent)">YÖNET →</span>
-      </div>`).join('');
+    try {
+        const r = await fetch('/api/accounts'); const accs = await r.json();
+        document.getElementById('accounts-container').innerHTML = accs.map(a => `
+          <div class="list-item" onclick="sekme('itiraf')">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
+              <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
+            </div>
+            <span style="color:var(--accent)">YÖNET →</span>
+          </div>`).join('');
+    } catch(e){}
   }
 
   async function botDurumKontrol() {
@@ -290,8 +283,6 @@
     }
     document.getElementById('header-dot').className = 'dot' + (overallActive ? ' aktif' : '');
     document.getElementById('header-durum').textContent = overallActive ? 'Botlar Çalışıyor' : 'Sistem Hazır';
-    
-    // Stats refresh on each check
     configYukle();
   }
 
@@ -309,7 +300,6 @@
     try {
       const r = await fetch('/api/production/status'); const d = await r.json();
       const html = (d.logs || []).map(s => `<p class="log-satir">${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`).join('');
-      
       ['prod-log-ekran', 'single-log-ekran'].forEach(id => {
           const ek = document.getElementById(id);
           if(ek) {
@@ -327,32 +317,24 @@
     await fetch(url, {method:'POST'}); toast('Başlatıldı'); setTimeout(botDurumKontrol, 1000);
   }
   async function botStop(m) { await fetch(`/api/${m}_bot/stop`, {method:'POST'}); toast('Durduruldu'); setTimeout(botDurumKontrol, 1000); }
-  async function logTemizle(m) { await fetch(`/api/${m}_bot/logs/clear`, {method:'POST'}); document.getElementById(`${m}-log-ekran`).innerHTML = ''; sonLogs[m] = 0; }
-  
+  async function logTemizle(m) { 
+    if(m === 'prod') { await fetch('/api/production/reset', {method:'POST'}); }
+    else { await fetch(`/api/${m}_bot/logs/clear`, {method:'POST'}); }
+    document.querySelectorAll(m === 'prod' ? '.log-ekran' : `#${m}-log-ekran`).forEach(e => e.innerHTML = '');
+    toast('Loglar temizlendi');
+  }
+  async function prodReset() { await fetch('/api/production/reset', {method:'POST'}); toast('Üretim sistemi sıfırlandı'); }
+
   async function videoYukle() { const r=await fetch('/api/videos'); tumVideolar=await r.json(); videolariGoster(); }
-  
   function videolariGoster() {
     const grid = document.getElementById('video-grid');
     const liste = currentFilter === 'hepsi' ? tumVideolar : tumVideolar.filter(v => v.durum === currentFilter);
     if(!liste.length) { grid.innerHTML = '<p style="color:var(--text2)">Henüz video yok.</p>'; return; }
-    
     grid.innerHTML = liste.map(v => {
       const p = v.durum === 'paylasıldı';
-      return `
-        <div class="video-kart">
-          ${p ? '<div style="aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">PAYLAŞILDI</div>' : `<video controls src="/output/${v.dosya}"></video>`}
-          <div class="kart-body">
-            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                <span class="badge">${v.kategori}</span>
-                <span class="badge badge-durum badge-${v.durum}">${v.durum}</span>
-            </div>
-            <p style="font-size:12px;height:45px;overflow:hidden">${v.itiraf}</p>
-            <button class="btn btn-yesil" style="width:100%;margin-top:10px" onclick="paylas('${v.id}')" ${p ? 'disabled' : ''}>${p ? 'Paylaşıldı' : 'Paylaş'}</button>
-          </div>
-        </div>`;
+      return `<div class="video-kart">${p ? '<div style="aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">PAYLAŞILDI</div>' : `<video controls src="/output/${v.dosya}"></video>`}<div class="kart-body"><div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span class="badge">${v.kategori}</span><span class="badge badge-durum badge-${v.durum}">${v.durum}</span></div><p style="font-size:12px;height:45px;overflow:hidden">${v.itiraf}</p><button class="paylas-btn" style="margin-top:10px" onclick="paylas('${v.id}')" ${p ? 'disabled' : ''}>${p ? 'Paylaşıldı' : 'Paylaş'}</button></div></div>`;
     }).join('');
   }
-
   async function paylas(id) { await fetch(`/api/paylas/${id}`, {method:'POST'}); toast('Paylaşım başladı'); }
   
   async function tekliUret() {
@@ -362,23 +344,16 @@
     await fetch('/api/generate_single', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text,persona,theme,admin_reply,share})});
     toast('Üretim başladı');
   }
-
   async function hizliUret() { await fetch('/api/generate_from_json', {method:'POST', headers:{'Content-Type':'application/json'}, body:document.getElementById('json-input').value}); toast('Üretim başladı'); }
   
   async function configYukle() { 
     try { 
-        // Load stats
-        const rs = await fetch('/api/extended_stats');
-        const ds = await rs.json();
+        const rs = await fetch('/api/extended_stats'); const ds = await rs.json();
         document.getElementById('ext-followers').textContent = ds.followers.toLocaleString('tr-TR');
         document.getElementById('ext-avg-views').textContent = ds.avg_views.toLocaleString('tr-TR');
         document.getElementById('ext-total-videos').textContent = ds.total_videos;
         document.getElementById('ext-shared-videos').textContent = ds.shared_videos;
-
-        // Load account info
-        const ra = await fetch('/api/accounts');
-        const accs = await ra.json();
-        const def = accs.find(a => a.id === 'default');
+        const ra = await fetch('/api/accounts'); const accs = await ra.json(); const def = accs.find(a => a.id === 'default');
         if(def) {
             document.getElementById('active-acc-username').value = def.username;
             document.getElementById('active-acc-password').value = def.password;
@@ -386,21 +361,14 @@
         }
     } catch(_){} 
   }
-
   async function hesapBilgisiGuncelle() {
     const username = document.getElementById('active-acc-username').value;
     const password = document.getElementById('active-acc-password').value;
     const page_name = document.getElementById('active-acc-pagename').value;
-    
-    const r = await fetch('/api/account/update', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({username, password, page_name})
-    });
-    if(r.ok) toast('Bilgiler güncellendi');
+    await fetch('/api/account/update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password, page_name})});
+    toast('Bilgiler güncellendi');
   }
-
   async function shareStory() { await fetch('/api/story/share', {method:'POST'}); toast('Story sıraya alındı'); }
-  
   async function hesapEkle() {
     const username=document.getElementById('new-acc-username').value; const password=document.getElementById('new-acc-password').value;
     const page_name=document.getElementById('new-acc-pagename').value;

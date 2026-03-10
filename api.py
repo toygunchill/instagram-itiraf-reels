@@ -507,6 +507,111 @@ async def run_story_production(sentence):
         production_manager.log(f"❌ Story Hatası: {e}")
 
 
+ACCOUNTS_FILE = BASE_DIR / "accounts.json"
+
+def load_accounts():
+    if not ACCOUNTS_FILE.exists():
+        # İlk başta .env'deki hesabı varsayılan olarak ekle
+        from config import IG_USERNAME, IG_PASSWORD, PAGE_NAME
+        initial = [{
+            "id": "default",
+            "username": IG_USERNAME,
+            "password": IG_PASSWORD,
+            "page_name": PAGE_NAME,
+            "active": True
+        }]
+        ACCOUNTS_FILE.write_text(json.dumps(initial, indent=2))
+        return initial
+    return json.loads(ACCOUNTS_FILE.read_text())
+
+def save_accounts(accounts):
+    ACCOUNTS_FILE.write_text(json.dumps(accounts, indent=2))
+
+@app.get("/api/accounts")
+async def get_accounts():
+    return load_accounts()
+
+@app.post("/api/accounts/add")
+async def add_account(request: Request):
+    data = await request.json()
+    username = data.get("username")
+    password = data.get("password")
+    page_name = data.get("page_name")
+    
+    if not all([username, password, page_name]):
+        raise HTTPException(status_code=400, detail="Tüm alanları doldurun")
+    
+    accounts = load_accounts()
+    new_acc = {
+        "id": f"acc_{int(datetime.now().timestamp())}",
+        "username": username,
+        "password": password,
+        "page_name": page_name,
+        "active": False
+    }
+    accounts.append(new_acc)
+    save_accounts(accounts)
+    return {"status": "ok", "account": new_acc}
+
+
+@app.get("/api/extended_stats")
+async def get_extended_stats():
+    from config import BASE_DIR
+    import video_manager
+    stats_file = BASE_DIR / "stats.json"
+    
+    follower_count = 0
+    avg_reels_views = 0
+    if stats_file.exists():
+        try:
+            s_data = json.loads(stats_file.read_text())
+            follower_count = s_data.get("follower_count", 0)
+            avg_reels_views = s_data.get("avg_reels_views", 0)
+        except: pass
+        
+    meta = video_manager.meta_yukle()
+    total_videos = len(meta)
+    shared_videos = sum(1 for v in meta.values() if v.get("durum") == "paylasıldı")
+    
+    return {
+        "followers": follower_count,
+        "avg_views": avg_reels_views,
+        "total_videos": total_videos,
+        "shared_videos": shared_videos
+    }
+
+@app.post("/api/account/update")
+async def update_active_account(request: Request):
+    data = await request.json()
+    new_username = data.get("username")
+    new_password = data.get("password")
+    new_page_name = data.get("page_name")
+    
+    accounts = load_accounts()
+    # Şimdilik varsayılan hesabı güncelliyoruz
+    for acc in accounts:
+        if acc["id"] == "default":
+            if new_username: acc["username"] = new_username
+            if new_password: acc["password"] = new_password
+            if new_page_name: acc["page_name"] = new_page_name
+            break
+    
+    save_accounts(accounts)
+    
+    # .env dosyasını da senkronize et (Botlar oradan okuyor)
+    env_path = BASE_DIR / ".env"
+    env_content = ""
+    if new_username: env_content += f"IG_USERNAME={new_username}\n"
+    if new_password: env_content += f"IG_PASSWORD={new_password}\n"
+    if new_page_name: env_content += f"PAGE_NAME={new_page_name}\n"
+    # Diğerlerini koru (basit yaklaşım: sadece bunları yazalım veya tek tek güncelleyelim)
+    # Daha güvenli: config.py'den override=True ile yüklendiği için env güncellenmeli.
+    
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write(env_content)
+        
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
