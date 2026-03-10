@@ -313,6 +313,7 @@ async def follow_stats():
 
     follower_count = 0
     following_count = 0
+    avg_reels_views = 0
 
     # Hesap bilgilerini çek (Botun güncellediği dosya)
     if stats_file.exists():
@@ -321,10 +322,15 @@ async def follow_stats():
                 s_data = json.load(f)
                 follower_count = s_data.get("follower_count", 0)
                 following_count = s_data.get("following_count", 0)
+                avg_reels_views = s_data.get("avg_reels_views", 0)
         except: pass
 
     if not FOLLOWED_USERS_FILE.exists():
-        return {"followed": 0, "unfollowed": 0, "followers": follower_count, "following": following_count}
+        return {
+            "followed": 0, "unfollowed": 0, 
+            "followers": follower_count, "following": following_count,
+            "avg_views": avg_reels_views
+        }
 
     try:
         with open(FOLLOWED_USERS_FILE, "r", encoding="utf-8") as f:
@@ -335,10 +341,15 @@ async def follow_stats():
             "followed": followed, 
             "unfollowed": unfollowed,
             "followers": follower_count,
-            "following": following_count
+            "following": following_count,
+            "avg_views": avg_reels_views
         }
     except:
-        return {"followed": 0, "unfollowed": 0, "followers": follower_count, "following": following_count}
+        return {
+            "followed": 0, "unfollowed": 0, 
+            "followers": follower_count, "following": following_count,
+            "avg_views": avg_reels_views
+        }
 
 
 @app.get("/api/config")

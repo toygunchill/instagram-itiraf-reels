@@ -210,8 +210,25 @@ class InstagramBot:
     def hesap_istatistiklerini_guncelle(self):
         try:
             info = self.cl.user_info(self.cl.user_id)
-            stats = {"follower_count": info.follower_count, "following_count": info.following_count, "updated_at": datetime.now().isoformat()}
-            with open(BASE_DIR / "stats.json", "w", encoding="utf-8") as f: json.dump(stats, f)
+            
+            # Son 10 Reels izlenmesini çek ve ortalama hesapla
+            avg_views = 0
+            try:
+                medias = self.cl.user_medias(self.cl.user_id, amount=10)
+                reels = [m for m in medias if m.media_type == 2 and m.product_type == "clips"]
+                if reels:
+                    total_views = sum(m.play_count for m in reels)
+                    avg_views = int(total_views / len(reels))
+            except: pass
+
+            stats = {
+                "follower_count": info.follower_count,
+                "following_count": info.following_count,
+                "avg_reels_views": avg_views,
+                "updated_at": datetime.now().isoformat()
+            }
+            with open(BASE_DIR / "stats.json", "w", encoding="utf-8") as f:
+                json.dump(stats, f)
         except: pass
 
     def dm_tara(self) -> list:

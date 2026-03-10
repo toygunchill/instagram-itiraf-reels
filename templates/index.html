@@ -417,6 +417,11 @@
           <span id="stat-followers" style="font-size: 18px; font-weight: 600; color: #fff;">0</span>
         </div>
         <div>
+          <span style="display: block; font-size: 11px; color: var(--text2); text-transform: uppercase;">Ort. İzlenme</span>
+          <span id="stat-views" style="font-size: 18px; font-weight: 600; color: var(--accent);">0</span>
+        </div>
+        </div>
+
           <span style="display: block; font-size: 11px; color: var(--text2); text-transform: uppercase;">İstek Atılan (Bot)</span>
           <span id="stat-followed" style="font-size: 18px; font-weight: 600; color: var(--accent);">0</span>
         </div>
@@ -659,6 +664,9 @@
       document.getElementById('stat-followed').textContent = ds.followed || 0;
       document.getElementById('stat-followers').textContent = ds.followers || 0;
       document.getElementById('stat-following').textContent = ds.following || 0;
+      if (document.getElementById('stat-views')) {
+        document.getElementById('stat-views').textContent = (ds.avg_views || 0).toLocaleString('tr-TR');
+      }
     } catch (_) {}
 
     const headerAktif = document.getElementById('dm-bot-dot').classList.contains('aktif') || 
