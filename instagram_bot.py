@@ -38,13 +38,11 @@ class InstagramBot:
         self.follow_queue = []
         
         self.last_follow_time = datetime.min
-        self.last_unfollow_time = datetime.min
         self.last_fetch_time = datetime.min
         self.last_human_action = datetime.now()
         
         self.daily_stats = self._stats_yukle()
         self.next_follow_delay = random.randint(450, 900)
-        self.next_unfollow_delay = random.randint(300, 600)
         
         self.running = True
         # Sinyal dinleyicileri
@@ -187,21 +185,6 @@ class InstagramBot:
             self.next_follow_delay = random.randint(450, 900)
         except Exception as e: log(f"Takip hatası: {e}")
 
-    def otomasyon_takipten_cik(self):
-        simdi = datetime.now()
-        bekleyenler = [u for u, i in self.followed_users.items() if i.get("status") == "followed" and (simdi - datetime.fromisoformat(i["followed_at"])).total_seconds() >= 24*3600]
-        if not bekleyenler or (simdi - self.last_unfollow_time).total_seconds() < self.next_unfollow_delay: return
-
-        user_id = bekleyenler[0]
-        try:
-            log(f"Takipten çıkılıyor: {user_id}")
-            self.cl.user_unfollow(user_id)
-            self.followed_users[user_id]["status"] = "unfollowed"
-            self._followed_kaydet()
-            self.last_unfollow_time = simdi
-            self.next_unfollow_delay = random.randint(300, 600)
-        except Exception as e: log(f"Çıkış hatası: {e}")
-
     def insani_davranis_simule_et(self):
         if (datetime.now() - self.last_human_action).total_seconds() < random.randint(1200, 2400): return
         log("İnsani davranış simüle ediliyor...")
@@ -298,7 +281,6 @@ class InstagramBot:
             if mode in ["share", "all"]: self.planli_paylasim_kontrol()
             if mode in ["follow", "all"]:
                 self.otomasyon_takip_et()
-                self.otomasyon_takipten_cik()
             if mode in ["dm", "all"]:
                 itiraflar = self.dm_tara()
                 for kayit in itiraflar:
