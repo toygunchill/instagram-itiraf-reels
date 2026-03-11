@@ -83,45 +83,34 @@ class VideoGenerator:
         """Premium Mesh Gradient ve Glassmorphism efektli Story."""
         print(f"  [Story] Tasarlanıyor: {metin[:20]}...")
         
-        # Instagram Estetiği Renk Paleti
-        c1, c2 = (131, 58, 180), (253, 29, 29) # Mor -> Kırmızı
-        c3, c4 = (252, 176, 69), (10, 10, 10)  # Turuncu -> Siyah
+        c1, c4 = (131, 58, 180), (10, 10, 10)
         
         f_story_main = _font_yukle(75)
-        f_story_badge = _font_yukle(40)
         f_story_header = _font_yukle(30)
 
         frameler = []
-        for i in range(150): # 5 Saniye
-            # 1. Arka Plan: Mesh Gradient Simülasyonu
+        for i in range(150):
             img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
             draw = ImageDraw.Draw(img)
             
             for y in range(VIDEO_YUKSEKLIK):
-                # Yatay ve dikey karmaşık gradyan
                 ratio_y = y / VIDEO_YUKSEKLIK
                 r = int(c1[0]*(1-ratio_y) + c4[0]*ratio_y)
                 g = int(c1[1]*(1-ratio_y) + c4[1]*ratio_y)
                 b = int(c1[2]*(1-ratio_y) + c4[2]*ratio_y)
                 draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(r, g, b))
 
-            # 2. Glassmorphism Panel
-            # Hafif beyazımsı transparan kutu
             panel_margin = 80
             panel_y0 = 450
             panel_y1 = 1250
-            # PIL'de gerçek blur için maske gerekir, burada şık bir alpha kutusu yapalım
             overlay = Image.new('RGBA', (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), (0,0,0,0))
             d_overlay = ImageDraw.Draw(overlay)
             d_overlay.rounded_rectangle([panel_margin, panel_y0, VIDEO_GENISLIK - panel_margin, panel_y1], radius=50, fill=(255, 255, 255, 30), outline=(255, 255, 255, 60), width=3)
             img.paste(Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB'))
             
-            # 3. İçerik Çizimi
-            # Header
             header_txt = "✨ GÜNÜN İTİRAFI ✨"
             self._draw_mixed_text(draw, (0, panel_y0 + 60), header_txt, font=f_story_header, center=True)
             
-            # Ana Metin
             satirlar = textwrap.wrap(metin, width=16)
             line_h = 95
             curr_y = panel_y0 + 180
@@ -129,7 +118,6 @@ class VideoGenerator:
                 self._draw_mixed_text(draw, (0, curr_y), s, font=f_story_main, center=True)
                 curr_y += line_h
             
-            # 4. "Soru Sticker" Tasarımı
             sticker_w, sticker_h = 500, 140
             sx0 = (VIDEO_GENISLIK - sticker_w) // 2
             sy0 = panel_y1 - 100
@@ -140,9 +128,7 @@ class VideoGenerator:
             tw = self._get_text_width(draw, sticker_txt, st_f)
             draw.text((sx0 + (sticker_w - tw)//2, sy0 + 45), sticker_txt, font=st_f, fill=(80,80,80))
             
-            # 5. Alt Etiket
             draw.text((panel_margin + 20, panel_y1 + 40), f"@{self.sayfa_adi}", font=f_story_header, fill=(255,255,255,180))
-
             frameler.append(np.array(img))
 
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
@@ -226,18 +212,33 @@ class VideoGenerator:
 
     def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
         import subprocess
-        print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
-        frameler = [self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
+        print(f"  [Video] Frameler oluşturuluyor (Toplam: {TOPLAM_FRAME})...")
+        frameler = []
+        for i in range(TOPLAM_FRAME):
+            frameler.append(self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME))
+            if i % 50 == 0: print(f"    - Frame {i}/{TOPLAM_FRAME}")
+            
+        print("  [Video] MoviePy klip oluşturuluyor...")
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
+        
         sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
+        print(f"  [Video] Sessiz video kaydediliyor: {os.path.basename(sessiz_video)}")
         klip.write_videofile(sessiz_video, fps=VIDEO_FPS, codec="libx264", logger=None)
+        
+        print("  [Video] Müzik seçiliyor...")
         muzik_yolu = muzik_sec(tema)
         if muzik_yolu and os.path.exists(muzik_yolu):
             try:
+                print(f"  [FFmpeg] Sesi birleştiriyor: {os.path.basename(muzik_yolu)}")
                 cmd = ['ffmpeg', '-y', '-i', sessiz_video, '-stream_loop', '-1', '-i', muzik_yolu, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-filter_complex', '[1:a]volume=0.30[a]', '-map', '0:v:0', '-map', '[a]', '-shortest', cikti_yolu]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if os.path.exists(sessiz_video): os.remove(sessiz_video)
+                print("  [Video] Başarıyla tamamlandı.")
                 return cikti_yolu
-            except: os.rename(sessiz_video, cikti_yolu)
-        else: os.rename(sessiz_video, cikti_yolu)
+            except Exception as e:
+                print(f"  [FFmpeg] Hata: {e}")
+                os.rename(sessiz_video, cikti_yolu)
+        else:
+            print("  [Video] Müzik yok, sessiz video kullanılıyor.")
+            os.rename(sessiz_video, cikti_yolu)
         return cikti_yolu

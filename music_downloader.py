@@ -15,14 +15,12 @@ def music_download(vibe: str):
 
     # Prompt Madde 4: Vibe -> Arama Sorguları
     queries = VIBE_QUERIES.get(vibe, ["royalty free background music"])
-    # "short" ve "instrumental" ekleyerek daha uygun sonuçlar alalım
     query = random.choice(queries) + " no copyright instrumental short"
     
     print(f"  [Müzik] '{vibe}' için YouTube'da aranıyor: {query}")
     
     ydl_opts = {
         'format': 'bestaudio/best',
-        # FFmpegExtractAudio post-processor .mp3 üretir
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -32,15 +30,28 @@ def music_download(vibe: str):
         'quiet': True,
         'no_warnings': True,
         'default_search': 'ytsearch1',
-        # Çok uzun videoları indirmemek için filtre (max 10 dk / 600 sn)
         'match_filter': yt_dlp.utils.match_filter_func("duration < 600"),
+        # Zaman aşımı ekle (30 saniye içinde cevap alamazsa iptal et)
+        'socket_timeout': 30,
+        'retries': 2,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([query])
+            # 60 saniye içinde indirme bitmezse hata fırlat (büyük videoları önlemek için)
+            import signal
+            def handler(signum, frame):
+                raise TimeoutError("İndirme çok uzun sürdü!")
+            
+            # MacOS/Linux için alarm sistemi
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(60) # 60 saniye limit
+            
+            try:
+                ydl.download([query])
+            finally:
+                signal.alarm(0) # Alarmı iptal et
         
-        # .webm.part gibi kalıntıları temizle (eğer indirme yarıda kesildiyse)
         for part_file in target_dir.glob("*.part"):
             part_file.unlink()
             
@@ -51,5 +62,4 @@ def music_download(vibe: str):
         return False
 
 if __name__ == "__main__":
-    # Test
     music_download("lonely_night")
