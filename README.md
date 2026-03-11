@@ -1,13 +1,29 @@
 # Instagram İtiraf Reels Otomasyonu 🚀
 
-Bu proje, itirafları otomatik olarak görselleştirip Instagram Reels olarak paylaşan bir otomasyon sistemidir. Web paneli üzerinden JSON yükleyerek toplu üretim yapabilir veya botu çalıştırarak gelen DM'leri otomatik videoya dönüştürebilirsiniz.
+Bu proje, itirafları otomatik olarak profesyonel görünümlü Instagram Reels ve Story videolarına dönüştüren, otomatik paylaşım ve etkileşim özelliklerine sahip gelişmiş bir otomasyon sistemidir.
 
-## ✨ Özellikler
-- **Web Panel:** Videoları yönetin, botu başlatın/durdurun ve canlı logları izleyin.
-- **Hızlı Üretim (JSON):** Toplu itiraf verilerini yükleyin, videolar hemen üretilsin ve 30'ar dakika ara ile paylaşılsın.
-- **DM Botu:** Gelen itiraf mesajlarını (`itiraf:` ile başlayan) otomatik olarak videoya dönüştürür.
-- **Otomatik Silme:** Paylaşılan videolar depolama alanı kazanmak için hem yerelden hem de sistemden otomatik temizlenir.
-- **Akıllı İşleme:** Claude API ile metin düzeltme, kategori belirleme ve etkileşimli caption üretimi.
+## ✨ Öne Çıkan Özellikler
+
+### 📱 Modern Yönetim Paneli
+- **Dashboard Altyapısı:** 4 kartlı modern ana ekran üzerinden tüm modüllere erişim.
+- **Çoklu Hesap Desteği:** Birden fazla Instagram hesabını tek panelden yönetme ve bilgilerini UI üzerinden anlık güncelleme.
+- **Video Yönetimi:** Üretilen videoları filtreleme (Bekleyen/Paylaşılan), silme ve açıklama metinlerini (caption) tek tıkla kopyalama.
+
+### 🎬 Profesyonel Video Üretimi
+- **Düşük Bellek (Low-RAM) Modu:** Kareleri diske yazarak RAM tüketmeden üretim yapabilen, uzun süreli kullanımlarda donma yapmayan altyapı.
+- **Canlı İlerleme Takibi:** Üretim sırasında `%25`, `%50` gibi ilerleme çubukları (ASCII Bar) ve adım adım log raporlama.
+- **Emoji Desteği:** Apple Color Emoji entegrasyonu ile renkli ve sorunsuz emoji gösterimi.
+- **Hibrit Ses Birleştirme:** FFmpeg ile doğrudan ses bindirme sayesinde %100 müzikli ve stabil videolar.
+
+### 🎵 Akıllı Müzik Sistemi
+- **Otomatik YouTube İndirici:** İtirafın temasına (Vibe) göre YouTube'dan telifsiz, kısa ve en uygun müzikleri otomatik bulur ve indirir.
+- **Vibe Eşleşmesi:** 20+ kategori (İlişki, Aldatma, Eski Sevgili, İhanet vb.) için önceden tanımlanmış müzik duyguları.
+
+### 🤖 Gelişmiş Bot ve Paylaşım Mantığı
+- **Tekli Üret & Paylaş:** Anlık itirafları üretip hiç beklemeden paylaşma özelliği.
+- **Toplu Üretim & Zamanlama:** Yüklenen JSON verilerini sıraya alır, videoları üretir ve her paylaşım arasına 25-45 dakika arası rastgele süre koyarak "insansı" davranış sergiler.
+- **Story CTA (Eylem Çağrısı):** Takipçilerden itiraf istemek için Premium gradyan ve Glassmorphism efektli Story jeneratörü.
+- **Akıllı Retry:** Instagram 500 hatalarına ve hız sınırlarına karşı exponential backoff (artan bekleme süresi) mekanizması.
 
 ## 🛠 Kurulum
 
@@ -17,49 +33,42 @@ Bu proje, itirafları otomatik olarak görselleştirip Instagram Reels olarak pa
    cd instagram-itiraf-reels
    ```
 
-2. **Gerekli Kütüphaneleri Yükleyin:**
-   *(Python 3.10+ önerilir)*
+2. **Bağımlılıkları Yükleyin:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **FFmpeg Kurulumu:**
-   Video işlemleri için sisteminizde FFmpeg yüklü olmalıdır.
+3. **Sistem Gereksinimleri (FFmpeg):**
+   Müzik ve video birleştirme işlemleri için sisteminizde **FFmpeg** yüklü olmalıdır.
    - **macOS:** `brew install ffmpeg`
-   - **Windows:** [ffmpeg.org](https://ffmpeg.org/download.html) üzerinden indirip PATH'e ekleyin.
-   - **Linux:** `sudo apt install ffmpeg`
+   - **Windows:** [ffmpeg.org](https://ffmpeg.org/download.html) üzerinden indirin.
 
 4. **Yapılandırma (.env):**
-   Kök dizinde `.env` dosyası oluşturun ve bilgilerinizi girin:
+   Panelin **Ayarlar** sekmesinden veya manuel olarak `.env` dosyasından bilgilerinizi girin:
    ```env
    IG_USERNAME=email@example.com
    IG_PASSWORD=sifreniz
-   PAGE_NAME=itiraf.sayfasi
-   ANTHROPIC_API_KEY=sk-ant-... (Opsiyonel: Claude kullanmak istemiyorsanız boş bırakın)
+   PAGE_NAME=gizli_itiraf_edenler
+   ANTHROPIC_API_KEY=sk-ant-... (Claude Düzenleme için)
    ```
 
-## 🚀 Çalıştırma
+## 🚀 Başlatma
 
-### Web Panelini Başlatın:
+### Yerel Sunucuyu Çalıştırın:
 ```bash
 python api.py
 ```
-Ardından tarayıcınızda `http://localhost:8000` adresine gidin.
-
-### Botu Başlatın:
-Panel üzerinden **"DM Botu"** sekmesine gelip **"Botu Başlat"** butonuna basmanız yeterlidir. Alternatif olarak terminalden:
-```bash
-python main.py --bot
-```
+Tarayıcınızda `http://localhost:8000` adresine giderek Dashboard üzerinden yönetime başlayabilirsiniz.
 
 ## 📁 Dosya Yapısı
-- `api.py`: FastAPI backend ve Web Panel sunucusu.
-- `instagram_bot.py`: Instagram etkileşim ve paylaşım motoru.
-- `video_generator.py`: Görsel ve video üretim mantığı.
-- `production_manager.py`: Toplu üretim ve log yönetimi.
-- `muzik/`: Kategori bazlı müziklerin bulunduğu klasör.
-- `output/`: Üretilen videoların geçici olarak tutulduğu yer.
+- `api.py`: FastAPI backend ve modüler yönetim sistemi.
+- `video_generator.py`: Gelişmiş Low-RAM video ve story motoru.
+- `music_downloader.py`: YouTube üzerinden dinamik müzik indirici.
+- `instagram_bot.py`: Paylaşım, takip ve DM otomasyon motoru.
+- `production_manager.py`: Üretim kuyruğu ve canlı log yöneticisi.
+- `muzik/`: Vibe bazlı otomatik oluşturulan müzik kütüphanesi.
 
-## ⚠️ Önemli Notlar
-- Instagram hesabınızda **İki Faktörlü Doğrulama (2FA)** varsa, bot giriş yaparken sorun yaşayabilir. Uygulama şifresi kullanmanız veya 2FA'yı geçici olarak kapatmanız önerilir.
-- Videolar paylaşıldıktan sonra otomatik olarak silinir.
+## ⚠️ Güvenlik ve Notlar
+- Hesabınızın sağlığı için bot işlemler arası bekleme sürelerini otomatik ayarlar.
+- **Giriş Sorunu:** `challenge_required` hatası alırsanız `python login_fix.py` aracını kullanarak etkileşimli giriş yapabilirsiniz.
+- Videolar paylaşıldıktan sonra disk alanı kazanmak için otomatik temizlenir.
