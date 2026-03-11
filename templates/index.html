@@ -271,7 +271,7 @@
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('aktif'));
     document.getElementById(`inner-${id}`).classList.add('aktif');
     el.classList.add('aktif');
-
+    
     // Üretim loglarını takip etmeye başla
     clearInterval(prodLoopTimer);
     if(id==='v-hizli' || id==='v-tekli') {
@@ -280,25 +280,25 @@
     }
   }
 
-  async function hesaplariYukle() {
-
-    document.querySelectorAll('.badge').forEach(b => b.classList.remove('aktif'));
+  function filtre(deger, el) {
+    document.querySelectorAll('#inner-v-liste .badge').forEach(b => b.classList.remove('aktif'));
     el.classList.add('aktif');
     currentFilter = deger;
     videolariGoster();
   }
-
-  async function hesaplariYukle() {
-    const r = await fetch('/api/accounts'); const accs = await r.json();
-    document.getElementById('accounts-container').innerHTML = accs.map(a => `
-      <div class="list-item" onclick="sekme('itiraf')">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
-          <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
-        </div>
-        <span style="color:var(--accent)">YÖNET →</span>
-      </div>`).join('');
-  }
+async function hesaplariYukle() {
+  try {
+      const r = await fetch('/api/accounts'); const accs = await r.json();
+      document.getElementById('accounts-container').innerHTML = accs.map(a => `
+        <div class="list-item" onclick="sekme('itiraf')">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
+            <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
+          </div>
+          <span style="color:var(--accent)">YÖNET →</span>
+        </div>`).join('');
+  } catch(e){}
+}
 
   async function botDurumKontrol() {
     const modes = ['dm', 'share', 'follow'];
