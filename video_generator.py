@@ -66,6 +66,7 @@ class VideoGenerator:
         return bbox[2] - bbox[0]
 
     def _draw_mixed_text(self, draw, xy, text, font=None, center=False):
+        """Harf harf font seçerek çizim yapar (Kutucuk sorununu çözer)."""
         x, y = xy
         if center:
             total_w = self._get_text_width(draw, text, font)
@@ -80,7 +81,8 @@ class VideoGenerator:
             x += (bbox[2] - bbox[0])
 
     def story_olustur(self, metin: str, cikti_yolu: str) -> str:
-        """Optimize edilmiş Story üretimi."""
+        """Optimize edilmiş Story üretimi (FFmpeg Sesli)."""
+        import subprocess
         print(f"  [Story] Üretiliyor...")
         c1, c4 = (131, 58, 180), (10, 10, 10)
         img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
@@ -107,7 +109,23 @@ class VideoGenerator:
 
         frame = np.array(img)
         klip = ImageSequenceClip([frame] * 150, fps=VIDEO_FPS)
-        klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
+        sessiz_story = cikti_yolu.replace(".mp4", "_story_silent.mp4")
+        klip.write_videofile(sessiz_story, fps=VIDEO_FPS, codec="libx264", audio=False, logger=None)
+        klip.close()
+
+        # Hikaye için genel bir müzik seç
+        muzik_yolu = muzik_sec("genel")
+        if muzik_yolu and os.path.exists(muzik_yolu):
+            try:
+                cmd = ['ffmpeg', '-y', '-i', sessiz_story, '-stream_loop', '-1', '-i', muzik_yolu, '-c:v', 'copy', '-c:a', 'aac', '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-filter:a', 'volume=0.30', cikti_yolu]
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+                if os.path.exists(sessiz_story): os.remove(sessiz_story)
+                return cikti_yolu
+            except: 
+                if os.path.exists(sessiz_story): os.rename(sessiz_story, cikti_yolu)
+        else:
+            if os.path.exists(sessiz_story): os.rename(sessiz_story, cikti_yolu)
+            
         return cikti_yolu
 
     def frame_olustur(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
@@ -151,6 +169,7 @@ class VideoGenerator:
             line_draw = satir[:target_idx - curr_idx]
             self._draw_mixed_text(draw, (x0 + 28, y0 + 22 + i * line_h), line_draw)
             curr_idx += len(satir) + 1
+
         if not is_admin: draw.text((x0+5, y0+balon_h+8), "13:37", font=self.f_saat, fill=RENKLER["gri_koyu"])
         return y0 + balon_h
 
