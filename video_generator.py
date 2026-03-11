@@ -139,21 +139,26 @@ class VideoGenerator:
         draw.ellipse([VIDEO_GENISLIK-103, y+4, VIDEO_GENISLIK-27, y+80], fill=RENKLER["mavi"])
         draw.text((VIDEO_GENISLIK-77, y+24), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
-    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
+    def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None, logger=None) -> str:
         """Düşük Bellek Modu: Kareleri diske yazar ve FFmpeg ile birleştirir."""
+        def _log(msg):
+            if logger: logger(msg)
+            else: print(msg)
+
         temp_dir = Path("temp_frames")
         if temp_dir.exists(): shutil.rmtree(temp_dir)
         temp_dir.mkdir()
 
-        print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
+        _log(f"Üretim başladı. Tema: {tema}")
         for i in range(TOPLAM_FRAME):
             img = self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME)
             img.save(temp_dir / f"frame_{i:04d}.jpg", quality=85)
-            if i % 100 == 0: print(f"    - İlerleme: %{int(i/TOPLAM_FRAME*100)}")
+            if i % 50 == 0: 
+                _log(f"Video İşleniyor: %{int(i/TOPLAM_FRAME*100)}")
 
         sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
+        _log("Video dosyası birleştiriliyor...")
         
-        # FFmpeg ile kareleri videoya dönüştür (Sıfır RAM tüketimi)
         ffmpeg_cmd = [
             'ffmpeg', '-y', '-framerate', str(VIDEO_FPS),
             '-i', str(temp_dir / 'frame_%04d.jpg'),
@@ -162,8 +167,10 @@ class VideoGenerator:
         ]
         subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+        _log("Müzik seçiliyor ve indiriliyor...")
         muzik_yolu = muzik_sec(tema)
         if muzik_yolu and os.path.exists(muzik_yolu):
+            _log(f"Müzik ekleniyor: {os.path.basename(muzik_yolu)}")
             try:
                 final_cmd = [
                     'ffmpeg', '-y', '-i', sessiz_video,
@@ -175,12 +182,12 @@ class VideoGenerator:
             except: 
                 if os.path.exists(sessiz_video): os.rename(sessiz_video, cikti_yolu)
         else:
+            _log("Müzik bulunamadı, sessiz video kaydedildi.")
             if os.path.exists(sessiz_video): os.rename(sessiz_video, cikti_yolu)
 
-        # Temizlik
         shutil.rmtree(temp_dir)
         if os.path.exists(sessiz_video): os.remove(sessiz_video)
-        print("  [Video] Başarıyla tamamlandı.")
+        _log("✅ Video başarıyla tamamlandı.")
         return cikti_yolu
 
     def story_olustur(self, metin: str, cikti_yolu: str) -> str:

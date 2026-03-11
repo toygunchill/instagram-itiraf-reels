@@ -75,6 +75,7 @@ class ProductionManager:
 
     def _run_loop(self, claude, video_gen, video_manager, output_dir, anon_func, tema_func):
         self.log(f"Toplu üretim başlatıldı. Toplam: {self.total_count}")
+        
         # Planlama başlangıç zamanı
         current_time = datetime.now()
 
@@ -92,18 +93,17 @@ class ProductionManager:
                     self.log(f"[{i+1}/{self.total_count}] Boş metin atlandı.")
                     continue
 
-                self.log(f"[{i+1}/{self.total_count}] İşleniyor: {raw_text[:30]}...")
+                self.log(f"[{i+1}/{self.total_count}] İşleniyor...")
                 
-                # Paylaşım Aralığı: 1 saat (3600 sn) ile 1.5 saat (5400 sn) arası rastgele ekle
-                if i > 0: # İlk video hemen, diğerleri aralıklı
-                    import random # Güvenlik için burada da olsun
-                    interval = random.randint(3600, 5400)
+                # ... (Zamanlama ve Gece Koruması kısımları aynı kalsın) ...
+                # Paylaşım Aralığı: 25 dk (1500 sn) ile 45 dk (2700 sn) arası rastgele ekle
+                if i > 0:
+                    import random
+                    interval = random.randint(1500, 2700)
                     current_time += timedelta(seconds=interval)
                 
-                # Gece Koruması: 02:00 - 07:00 arasını kontrol et
-                if 2 <= current_time.hour < 7:
-                    self.log(f"  - Gece koruması: {current_time.strftime('%H:%M')} saati sabah 07:00 sonrasına erteleniyor.")
-                    current_time = current_time.replace(hour=7, minute=random.randint(0, 30), second=0)
+                if 1 <= current_time.hour < 8:
+                    current_time = current_time.replace(hour=8, minute=random.randint(0, 30), second=0)
                 
                 plan_zamani = current_time.isoformat()
                 
@@ -116,8 +116,8 @@ class ProductionManager:
                 video_adi = f"{video_id}.mp4"
                 video_yolu = str(output_dir / video_adi)
                 
-                self.log(f"  - Video üretiliyor ({theme})...")
-                video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply)
+                # Log fonksiyonunu direkt paslıyoruz
+                video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply, logger=self.log)
                 
                 video_manager.video_ekle(
                     video_id=video_id,

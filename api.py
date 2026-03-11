@@ -431,8 +431,8 @@ async def run_single_production(text, persona, theme, admin_reply, share):
         video_adi = f"{video_id}.mp4"
         video_yolu = str(OUTPUT_DIR / video_adi)
         
-        production_manager.log(f"Video üretiliyor (Müzik aranıyor)...")
-        video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply)
+        production_manager.log(f"Video üretiliyor...")
+        video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply, logger=production_manager.log)
         
         # 3. Metadata Kaydet
         video_manager.video_ekle(
