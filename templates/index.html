@@ -41,6 +41,7 @@
     .video-kart { background: var(--surface2); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
     .video-kart video { width: 100%; aspect-ratio: 9/16; background: #000; }
     .kart-body { padding: 12px; }
+    .itiraf-metin { font-size: 13px; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .log-ekran { background: #000; border-radius: 10px; padding: 12px; height: 250px; overflow-y: auto; font-family: monospace; font-size: 11px; border: 1px solid var(--border); }
     .log-satir { color: #0f0; margin-bottom: 3px; }
     .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--text2); font-size: 11px; text-transform: uppercase; font-weight: 700; }
@@ -54,11 +55,16 @@
     .badge.aktif { background: var(--accent); color: #fff; }
     .badge-durum.badge-bekliyor { color: #eab308; }
     .badge-durum.badge-paylasıldı { color: var(--success); }
-    
+    .caption-metin { font-size: 11px; color: var(--text2); background: rgba(255,255,255,0.02); padding: 6px; border-radius: 6px; margin: 8px 0; border-left: 2px solid var(--accent); position: relative; }
+    .kopyala-btn { position: absolute; right: 4px; top: 4px; font-size: 9px; background: var(--accent); color: #fff; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; opacity: 0; }
+    .caption-metin:hover .kopyala-btn { opacity: 1; }
     .stats-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
     .stat-box { background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
     .stat-val { display: block; font-size: 20px; font-weight: 800; color: var(--accent); }
     .stat-lbl { display: block; font-size: 10px; color: var(--text2); text-transform: uppercase; margin-top: 5px; }
+    .kart-aksiyonlar { display: flex; gap: 5px; margin-top: 10px; }
+    .sil-btn { flex: 1; background: none; border: 1px solid rgba(239,68,68,0.3); color: var(--danger); border-radius: 8px; padding: 6px; font-size: 11px; cursor: pointer; }
+    .ikincil-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px; font-size: 11px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -128,6 +134,7 @@
       <div class="tab" onclick="innerSekme('v-ayarlar', this)">Ayarlar</div>
     </div>
     
+    <!-- Liste -->
     <div class="inner-panel aktif" id="inner-v-liste">
         <div style="margin-bottom: 15px; display: flex; gap: 10px;">
             <button class="badge aktif" onclick="filtre('hepsi', this)">Hepsi</button>
@@ -137,37 +144,60 @@
         <div class="video-grid" id="video-grid"></div>
     </div>
 
+    <!-- Tekli -->
     <div class="inner-panel" id="inner-v-tekli">
         <div class="kutu">
+            <div class="kutu-baslik">Tekli Üret ve Hemen Paylaş</div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                 <input type="text" id="single-persona" placeholder="Persona">
                 <select id="single-theme">
                     <option value="genel">Genel</option>
                     <option value="ilişki">İlişki</option>
                     <option value="aldatma">Aldatma</option>
+                    <option value="eski sevgili">Eski Sevgili</option>
                 </select>
             </div>
             <textarea id="single-text" placeholder="İtiraf Metni" style="height:100px;"></textarea>
             <textarea id="single-admin-reply" placeholder="Admin Cevabı" style="height:60px;"></textarea>
-            <button class="btn btn-yesil" onclick="tekliUret()">Üretimi Başlat</button>
+            <button class="btn btn-yesil" onclick="tekliUret()" style="width:100%">Üret ve Instagram'da Paylaş</button>
             <div class="log-header" style="margin-top:20px;">Üretim Logları <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
             <div class="log-ekran" id="single-log-ekran" style="height:200px;"></div>
         </div>
     </div>
 
+    <!-- Hızlı -->
     <div class="inner-panel" id="inner-v-hizli">
         <div class="kutu">
-            <textarea id="json-input" placeholder="JSON yapıştırın..." style="height:200px; font-family:monospace;"></textarea>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-yesil" onclick="hizliUret()">Üretimi Başlat</button>
-                <button class="btn" style="background:var(--surface2)" onclick="jsonOrnek()">Örnek Format</button>
-                <button class="btn" style="background:var(--danger); font-size:10px;" onclick="prodReset()">AYARLARI SIFIRLA</button>
-            </div>
-            <div class="log-header" style="margin-top:20px;">Üretim Logları <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
-            <div class="log-ekran" id="prod-log-ekran" style="height:200px;"></div>
-        </div>
-    </div>
+            <div class="inner-panel" id="inner-v-hizli">
+                <div class="kutu">
+                    <div class="kutu-baslik">Toplu Üret (Sıraya Al)</div>
+                    <textarea id="json-input" placeholder="JSON yapıştırın..." style="height: 150px; font-family:monospace;"></textarea>
+                    <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                        <button class="btn btn-yesil" onclick="hizliUret()">Sıraya Ekle ve Üretimi Başlat</button>
+                        <button class="btn" style="background:var(--surface2)" onclick="jsonOrnek()">Örnek Format</button>
+                        <button class="btn" style="background:var(--danger); font-size:10px;" onclick="prodReset()">SIFIRLA</button>
+                    </div>
 
+                    <!-- Üretim Durumu Paneli -->
+                    <div id="prod-status-box" style="display:none; background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:13px;">
+                            <span id="prod-current-task" style="font-weight:700; color:var(--accent)">Hazırlanıyor...</span>
+                            <span id="prod-percentage" style="font-weight:700">0%</span>
+                        </div>
+                        <div style="width:100%; height:8px; background:var(--border); border-radius:10px; overflow:hidden;">
+                            <div id="prod-progress-bar" style="width:0%; height:100%; background:var(--accent); transition: width 0.3s ease;"></div>
+                        </div>
+                        <div style="margin-top:10px; font-size:11px; color:var(--text2);" id="prod-stats-line">
+                            İşlenen: 0 | Toplam: 0 | Hata: 0
+                        </div>
+                    </div>
+
+                    <div class="log-header">Üretim Akışı <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
+                    <div class="log-ekran" id="prod-log-ekran" style="height:250px;"></div>
+                </div>
+            </div>
+
+    <!-- Botlar -->
     <div class="inner-panel" id="inner-v-botlar">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
             <div class="kutu">
@@ -197,6 +227,7 @@
         </div>
     </div>
 
+    <!-- Ayarlar -->
     <div class="inner-panel" id="inner-v-ayarlar">
         <div class="stats-container">
             <div class="stat-box"><span class="stat-val" id="ext-followers">0</span><span class="stat-lbl">Takipçi</span></div>
@@ -208,7 +239,7 @@
             <div class="kutu-baslik">Hesap Bilgileri</div>
             <input type="text" id="active-acc-username" placeholder="Email">
             <input type="password" id="active-acc-password" placeholder="Şifre">
-            <input type="text" id="active-acc-pagename" placeholder="Görünecek İsim">
+            <input type="text" id="active-acc-pagename" placeholder="Sayfa Başlığı">
             <button class="btn btn-yesil" onclick="hesapBilgisiGuncelle()" style="width:100%">Bilgileri Güncelle</button>
         </div>
         <div class="kutu">
@@ -255,17 +286,15 @@
   }
 
   async function hesaplariYukle() {
-    try {
-        const r = await fetch('/api/accounts'); const accs = await r.json();
-        document.getElementById('accounts-container').innerHTML = accs.map(a => `
-          <div class="list-item" onclick="sekme('itiraf')">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
-              <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
-            </div>
-            <span style="color:var(--accent)">YÖNET →</span>
-          </div>`).join('');
-    } catch(e){}
+    const r = await fetch('/api/accounts'); const accs = await r.json();
+    document.getElementById('accounts-container').innerHTML = accs.map(a => `
+      <div class="list-item" onclick="sekme('itiraf')">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="acc-avatar">${a.username ? a.username[0].toUpperCase() : '?'}</div>
+          <div><p style="font-weight:700">${a.username}</p><p style="font-size:12px;color:var(--text2)">${a.page_name}</p></div>
+        </div>
+        <span style="color:var(--accent)">YÖNET →</span>
+      </div>`).join('');
   }
 
   async function botDurumKontrol() {
@@ -299,6 +328,27 @@
   async function prodDurumKontrol() {
     try {
       const r = await fetch('/api/production/status'); const d = await r.json();
+      const isRunning = d.status === 'running';
+      
+      // Progress UI
+      const statusBox = document.getElementById('prod-status-box');
+      if (statusBox) {
+          statusBox.style.display = (isRunning || d.status === 'completed') ? 'block' : 'none';
+          
+          const percent = d.total > 0 ? Math.round((d.processed / d.total) * 100) : 0;
+          document.getElementById('prod-progress-bar').style.width = percent + '%';
+          document.getElementById('prod-percentage').textContent = percent + '%';
+          document.getElementById('prod-stats-line').textContent = `İşlenen: ${d.processed} | Toplam: ${d.total} | Hata: ${d.failed}`;
+          
+          if (isRunning) {
+              const lastLog = d.logs && d.logs.length > 0 ? d.logs[d.logs.length - 1] : "";
+              document.getElementById('prod-current-task').textContent = lastLog.includes('Video üretiliyor') ? 'Video Oluşturuluyor...' : (lastLog.includes('Claude') ? 'AI Düzenleme Yapılıyor...' : 'Sıradaki İşleniyor...');
+          } else if (d.status === 'completed') {
+              document.getElementById('prod-current-task').textContent = 'Tüm İşlemler Tamamlandı ✅';
+              document.getElementById('prod-current-task').style.color = 'var(--success)';
+          }
+      }
+
       const html = (d.logs || []).map(s => `<p class="log-satir">${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`).join('');
       ['prod-log-ekran', 'single-log-ekran'].forEach(id => {
           const ek = document.getElementById(id);
@@ -308,6 +358,11 @@
               if (wasBottom) ek.scrollTop = ek.scrollHeight;
           }
       });
+      
+      // Eğer bittiyse ve videolarda değilsek uyarı ver
+      if (d.status === 'completed' && tumVideolar.length < d.processed) {
+          videoYukle();
+      }
     } catch (_) {}
   }
 
@@ -323,7 +378,7 @@
     document.querySelectorAll(m === 'prod' ? '.log-ekran' : `#${m}-log-ekran`).forEach(e => e.innerHTML = '');
     toast('Loglar temizlendi');
   }
-  async function prodReset() { await fetch('/api/production/reset', {method:'POST'}); toast('Üretim sistemi sıfırlandı'); }
+  async function prodReset() { await fetch('/api/production/reset', {method:'POST'}); toast('Sıfırlandı'); }
 
   async function videoYukle() { const r=await fetch('/api/videos'); tumVideolar=await r.json(); videolariGoster(); }
   function videolariGoster() {
@@ -332,19 +387,37 @@
     if(!liste.length) { grid.innerHTML = '<p style="color:var(--text2)">Henüz video yok.</p>'; return; }
     grid.innerHTML = liste.map(v => {
       const p = v.durum === 'paylasıldı';
-      return `<div class="video-kart">${p ? '<div style="aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">PAYLAŞILDI</div>' : `<video controls src="/output/${v.dosya}"></video>`}<div class="kart-body"><div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span class="badge">${v.kategori}</span><span class="badge badge-durum badge-${v.durum}">${v.durum}</span></div><p style="font-size:12px;height:45px;overflow:hidden">${v.itiraf}</p><button class="paylas-btn" style="margin-top:10px" onclick="paylas('${v.id}')" ${p ? 'disabled' : ''}>${p ? 'Paylaşıldı' : 'Paylaş'}</button></div></div>`;
+      return `<div class="video-kart">
+        ${p ? '<div style="aspect-ratio:9/16; background:#000; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">PAYLAŞILDI</div>' : `<video controls src="/output/${v.dosya}"></video>`}
+        <div class="kart-body">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span class="badge">${v.kategori}</span><span class="badge badge-durum badge-${v.durum}">${v.durum}</span></div>
+            <p style="font-size:12px;height:45px;overflow:hidden">${v.itiraf}</p>
+            <div class="caption-metin" title="Paylaşım Metni">${v.caption.substring(0,30)}... <button class="kopyala-btn" onclick="kopyala('${escJs(v.caption)}')">KOPYALA</button></div>
+            <div class="kart-aksiyonlar">
+                <button class="ikincil-btn" onclick="markShared('${v.id}')" ${p ? 'style="display:none"' : ''}>İşaretle</button>
+                <button class="sil-btn" onclick="videoSil('${v.id}')">SİL</button>
+            </div>
+        </div>
+      </div>`;
     }).join('');
   }
+
+  async function videoSil(id) { if(!confirm("Silsin mi?")) return; await fetch(`/api/videos/${id}`, {method:'DELETE'}); videoYukle(); }
+  async function markShared(id) { await fetch(`/api/mark_shared/${id}`, {method:'POST'}); videoYukle(); }
   async function paylas(id) { await fetch(`/api/paylas/${id}`, {method:'POST'}); toast('Paylaşım başladı'); }
   
   async function tekliUret() {
     const text=document.getElementById('single-text').value; const persona=document.getElementById('single-persona').value;
     const theme=document.getElementById('single-theme').value; const admin_reply=document.getElementById('single-admin-reply').value;
-    const share=document.getElementById('single-share').checked;
-    await fetch('/api/generate_single', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text,persona,theme,admin_reply,share})});
-    toast('Üretim başladı');
+    if(!text) return toast('Metin boş!','hata');
+    await fetch('/api/generate_single', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text,persona,theme,admin_reply,share:true})});
+    toast('Üretim ve Paylaşım Başladı');
   }
-  async function hizliUret() { await fetch('/api/generate_from_json', {method:'POST', headers:{'Content-Type':'application/json'}, body:document.getElementById('json-input').value}); toast('Üretim başladı'); }
+  async function hizliUret() { 
+    await fetch('/api/generate_from_json', {method:'POST', headers:{'Content-Type':'application/json'}, body:document.getElementById('json-input').value}); 
+    toast('Toplu üretim sıraya alındı'); 
+    document.getElementById('json-input').value = '';
+  }
   
   async function configYukle() { 
     try { 
@@ -375,6 +448,8 @@
     await fetch('/api/accounts/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password,page_name})});
     toast("Hesap eklendi"); sekme('itiraf-accounts');
   }
+  function jsonOrnek() { document.getElementById('json-input').value = JSON.stringify({"confessions":[{"persona":"anonim","theme":"iliski","text":"itiraf...","admin_reply":"cevap..."}]}, null, 2); }
+  function escJs(s) { return String(s).replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r'); }
 </script>
 </body>
 </html>
