@@ -168,34 +168,32 @@
     <!-- Hızlı -->
     <div class="inner-panel" id="inner-v-hizli">
         <div class="kutu">
-            <div class="inner-panel" id="inner-v-hizli">
-                <div class="kutu">
-                    <div class="kutu-baslik">Toplu Üret (Sıraya Al)</div>
-                    <textarea id="json-input" placeholder="JSON yapıştırın..." style="height: 150px; font-family:monospace;"></textarea>
-                    <div style="display:flex; gap:10px; margin-bottom: 20px;">
-                        <button class="btn btn-yesil" onclick="hizliUret()">Sıraya Ekle ve Üretimi Başlat</button>
-                        <button class="btn" style="background:var(--surface2)" onclick="jsonOrnek()">Örnek Format</button>
-                        <button class="btn" style="background:var(--danger); font-size:10px;" onclick="prodReset()">SIFIRLA</button>
-                    </div>
+            <div class="kutu-baslik">Toplu Üret (Sıraya Al)</div>
+            <textarea id="json-input" placeholder="JSON yapıştırın..." style="height: 150px; font-family:monospace;"></textarea>
+            <div style="display:flex; gap:10px; margin-bottom: 20px;">
+                <button class="btn btn-yesil" onclick="hizliUret()">Sıraya Ekle ve Üretimi Başlat</button>
+                <button class="btn" style="background:var(--surface2)" onclick="jsonOrnek()">Örnek Format</button>
+                <button class="btn" style="background:var(--danger); font-size:10px;" onclick="prodReset()">SIFIRLA</button>
+            </div>
 
-                    <!-- Üretim Durumu Paneli -->
-                    <div id="prod-status-box" style="display:none; background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:13px;">
-                            <span id="prod-current-task" style="font-weight:700; color:var(--accent)">Hazırlanıyor...</span>
-                            <span id="prod-percentage" style="font-weight:700">0%</span>
-                        </div>
-                        <div style="width:100%; height:8px; background:var(--border); border-radius:10px; overflow:hidden;">
-                            <div id="prod-progress-bar" style="width:0%; height:100%; background:var(--accent); transition: width 0.3s ease;"></div>
-                        </div>
-                        <div style="margin-top:10px; font-size:11px; color:var(--text2);" id="prod-stats-line">
-                            İşlenen: 0 | Toplam: 0 | Hata: 0
-                        </div>
-                    </div>
-
-                    <div class="log-header">Üretim Akışı <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
-                    <div class="log-ekran" id="prod-log-ekran" style="height:250px;"></div>
+            <!-- Üretim Durumu Paneli -->
+            <div id="prod-status-box" style="display:none; background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:13px;">
+                    <span id="prod-current-task" style="font-weight:700; color:var(--accent)">Hazırlanıyor...</span>
+                    <span id="prod-percentage" style="font-weight:700">0%</span>
+                </div>
+                <div style="width:100%; height:8px; background:var(--border); border-radius:10px; overflow:hidden;">
+                    <div id="prod-progress-bar" style="width:0%; height:100%; background:var(--accent); transition: width 0.3s ease;"></div>
+                </div>
+                <div style="margin-top:10px; font-size:11px; color:var(--text2);" id="prod-stats-line">
+                    İşlenen: 0 | Toplam: 0 | Hata: 0
                 </div>
             </div>
+
+            <div class="log-header">Üretim Akışı <button onclick="logTemizle('prod')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px;">TEMİZLE</button></div>
+            <div class="log-ekran" id="prod-log-ekran" style="height:250px;"></div>
+        </div>
+    </div>
 
     <!-- Botlar -->
     <div class="inner-panel" id="inner-v-botlar">
