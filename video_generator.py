@@ -153,8 +153,14 @@ class VideoGenerator:
         for i in range(TOPLAM_FRAME):
             img = self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME)
             img.save(temp_dir / f"frame_{i:04d}.jpg", quality=85)
-            if i % 50 == 0: 
-                _log(f"Video İşleniyor: %{int(i/TOPLAM_FRAME*100)}")
+            
+            # Her %10'luk dilimde görsel progress bar bas
+            if i % (TOPLAM_FRAME // 10) == 0 or i == TOPLAM_FRAME - 1:
+                percent = int((i + 1) / TOPLAM_FRAME * 100)
+                bar_len = 20
+                filled_len = int(bar_len * percent / 100)
+                bar = "█" * filled_len + "░" * (bar_len - filled_len)
+                _log(f"İlerleme: [{bar}] %{percent}")
 
         sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
         _log("Video dosyası birleştiriliyor...")
