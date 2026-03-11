@@ -3,6 +3,7 @@ import textwrap
 import numpy as np
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from multiprocessing import Pool, cpu_count
 
 from config import (
     VIDEO_GENISLIK, VIDEO_YUKSEKLIK, VIDEO_FPS, VIDEO_SURE,
@@ -48,6 +49,16 @@ def _metin_sar(metin: str, max_karakter: int = 32) -> list[str]:
         satirlar.extend(wrapped if wrapped else [""])
     return satirlar
 
+# Global nesne havuzu (Multiprocessing için gerekli)
+_gen_instance = None
+
+def _render_frame_worker(args):
+    """Paralel çalışan render fonksiyonu."""
+    global _gen_instance
+    if _gen_instance is None:
+        _gen_instance = VideoGenerator()
+    return _gen_instance.frame_olustur_core(*args)
+
 
 class VideoGenerator:
     def __init__(self, sayfa_adi: str = "gizli_itiraf_edenler"):
@@ -80,65 +91,45 @@ class VideoGenerator:
             x += (bbox[2] - bbox[0])
 
     def story_olustur(self, metin: str, cikti_yolu: str) -> str:
-        """Premium Mesh Gradient ve Glassmorphism efektli Story."""
-        print(f"  [Story] Tasarlanıyor: {metin[:20]}...")
-        
+        """Premium Story üretimi (Optimize edildi)."""
+        print(f"  [Story] Tasarlanıyor...")
         c1, c4 = (131, 58, 180), (10, 10, 10)
-        
         f_story_main = _font_yukle(75)
         f_story_header = _font_yukle(30)
 
-        frameler = []
-        for i in range(150):
-            img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
-            draw = ImageDraw.Draw(img)
-            
-            for y in range(VIDEO_YUKSEKLIK):
-                ratio_y = y / VIDEO_YUKSEKLIK
-                r = int(c1[0]*(1-ratio_y) + c4[0]*ratio_y)
-                g = int(c1[1]*(1-ratio_y) + c4[1]*ratio_y)
-                b = int(c1[2]*(1-ratio_y) + c4[2]*ratio_y)
-                draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(r, g, b))
+        # Tek bir ana kare oluştur ve hepsine kopyala (Story animasyonsuz olduğu için)
+        img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
+        draw = ImageDraw.Draw(img)
+        for y in range(VIDEO_YUKSEKLIK):
+            ratio_y = y / VIDEO_YUKSEKLIK
+            draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(int(c1[0]*(1-ratio_y) + c4[0]*ratio_y), int(c1[1]*(1-ratio_y) + c4[1]*ratio_y), int(c1[2]*(1-ratio_y) + c4[2]*ratio_y)))
+        
+        overlay = Image.new('RGBA', (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), (0,0,0,0))
+        ImageDraw.Draw(overlay).rounded_rectangle([80, 450, VIDEO_GENISLIK - 80, 1250], radius=50, fill=(255, 255, 255, 30), outline=(255, 255, 255, 60), width=3)
+        img.paste(Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB'))
+        self._draw_mixed_text(draw, (0, 510), "✨ GÜNÜN İTİRAFI ✨", font=f_story_header, center=True)
+        
+        satirlar = textwrap.wrap(metin, width=16)
+        curr_y = 630
+        for s in satirlar:
+            self._draw_mixed_text(draw, (0, curr_y), s, font=f_story_main, center=True)
+            curr_y += 95
+        
+        _yuvarlatilmis_dikdortgen(draw, (290, 1150, 790, 1290), 40, fill=(255,255,255))
+        draw.text((365, 1195), "İTİRAFINI YAZ...", font=_font_yukle(35), fill=(80,80,80))
+        draw.text((100, 1290), f"@{self.sayfa_adi}", font=f_story_header, fill=(255,255,255,180))
 
-            panel_margin = 80
-            panel_y0 = 450
-            panel_y1 = 1250
-            overlay = Image.new('RGBA', (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), (0,0,0,0))
-            d_overlay = ImageDraw.Draw(overlay)
-            d_overlay.rounded_rectangle([panel_margin, panel_y0, VIDEO_GENISLIK - panel_margin, panel_y1], radius=50, fill=(255, 255, 255, 30), outline=(255, 255, 255, 60), width=3)
-            img.paste(Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB'))
-            
-            header_txt = "✨ GÜNÜN İTİRAFI ✨"
-            self._draw_mixed_text(draw, (0, panel_y0 + 60), header_txt, font=f_story_header, center=True)
-            
-            satirlar = textwrap.wrap(metin, width=16)
-            line_h = 95
-            curr_y = panel_y0 + 180
-            for s in satirlar:
-                self._draw_mixed_text(draw, (0, curr_y), s, font=f_story_main, center=True)
-                curr_y += line_h
-            
-            sticker_w, sticker_h = 500, 140
-            sx0 = (VIDEO_GENISLIK - sticker_w) // 2
-            sy0 = panel_y1 - 100
-            _yuvarlatilmis_dikdortgen(draw, (sx0, sy0, sx0 + sticker_w, sy0 + sticker_h), 40, fill=(255,255,255), outline=(200,200,200))
-            
-            sticker_txt = "İTİRAFINI YAZ..."
-            st_f = _font_yukle(35)
-            tw = self._get_text_width(draw, sticker_txt, st_f)
-            draw.text((sx0 + (sticker_w - tw)//2, sy0 + 45), sticker_txt, font=st_f, fill=(80,80,80))
-            
-            draw.text((panel_margin + 20, panel_y1 + 40), f"@{self.sayfa_adi}", font=f_story_header, fill=(255,255,255,180))
-            frameler.append(np.array(img))
-
+        frame_np = np.array(img)
+        frameler = [frame_np] * 150 # 150 kareyi saniyeler içinde oluşturur
+        
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
         klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
         return cikti_yolu
 
-    def frame_olustur(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
+    def frame_olustur_core(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
+        """Asıl render işlemini yapan çekirdek metod."""
         img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), RENKLER["arka_plan"])
         draw = ImageDraw.Draw(img)
-
         self._ciz_header(draw)
         self._ciz_ust_bilgi(draw)
 
@@ -156,9 +147,7 @@ class VideoGenerator:
         return np.array(img)
 
     def _ciz_balon(self, draw, gosterilen_metin, etiket, y0, tam_metin, is_admin=False):
-        margin = 45
-        max_w = int(VIDEO_GENISLIK * 0.75)
-        line_h = 50
+        margin, max_w, line_h = 45, int(VIDEO_GENISLIK * 0.75), 50
         satirlar_iskelet = _metin_sar(tam_metin, max_karakter=28)
         balon_w = min(max((self._get_text_width(draw, s) for s in satirlar_iskelet), default=100) + 60, max_w)
         balon_h = len(satirlar_iskelet) * line_h + 55
@@ -166,79 +155,63 @@ class VideoGenerator:
             x1 = VIDEO_GENISLIK - margin
             x0 = x1 - balon_w
             fill, outline = (10, 80, 180), (30, 120, 255)
-            label_w = draw.textbbox((0,0), etiket, font=self.f_gonderen)[2]
-            draw.text((x1 - label_w - 5, y0 - 35), etiket, font=self.f_gonderen, fill=RENKLER["mavi"])
+            lw = draw.textbbox((0,0), etiket, font=self.f_gonderen)[2]
+            draw.text((x1-lw-5, y0-35), etiket, font=self.f_gonderen, fill=RENKLER["mavi"])
         else:
             x0, x1 = margin, margin + balon_w
             fill, outline = RENKLER["balon_bg"], RENKLER["balon_kenarlik"]
-            draw.text((x0 + 5, y0 - 35), etiket, font=self.f_gonderen, fill=RENKLER["gri_acik"])
-        y1 = y0 + balon_h
-        _yuvarlatilmis_dikdortgen(draw, (x0, y0, x1, y1), 25, fill, outline)
-        curr_idx = 0
-        target_idx = len(gosterilen_metin)
+            draw.text((x0+5, y0-35), etiket, font=self.f_gonderen, fill=RENKLER["gri_acik"])
+        _yuvarlatilmis_dikdortgen(draw, (x0, y0, x1, y0 + balon_h), 25, fill, outline)
+        curr_idx, target_idx = 0, len(gosterilen_metin)
         for i, satir in enumerate(satirlar_iskelet):
             if curr_idx >= target_idx: break
-            line_to_draw = satir[:target_idx - curr_idx]
-            self._draw_mixed_text(draw, (x0 + 28, y0 + 22 + i * line_h), line_to_draw)
+            line_draw = satir[:target_idx - curr_idx]
+            self._draw_mixed_text(draw, (x0 + 28, y0 + 22 + i * line_h), line_draw)
             curr_idx += len(satir) + 1
-        if not is_admin:
-            draw.text((x0 + 5, y1 + 8), "13:37", font=self.f_saat, fill=RENKLER["gri_koyu"])
-        return y1
+        if not is_admin: draw.text((x0+5, y0+balon_h+8), "13:37", font=self.f_saat, fill=RENKLER["gri_koyu"])
+        return y0 + balon_h
 
     def _ciz_header(self, draw):
         draw.rectangle([0, 0, VIDEO_GENISLIK, 135], fill=RENKLER["header_bg"])
         draw.text((30, 50), "<", font=self.f_baslik, fill=RENKLER["beyaz"])
         cx, cy, r = 125, 68, 38
         draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=RENKLER["profil_daire"])
-        harf = self.sayfa_adi[0].upper()
-        bbox = draw.textbbox((0,0), harf, font=self.f_baslik)
-        draw.text((cx-(bbox[2]-bbox[0])//2, cy-(bbox[3]-bbox[1])//2-2), harf, font=self.f_baslik, fill=RENKLER["beyaz"])
+        draw.text((cx-15, cy-20), self.sayfa_adi[0].upper(), font=self.f_baslik, fill=RENKLER["beyaz"])
         draw.text((185, 38), self.sayfa_adi, font=self.f_baslik, fill=RENKLER["beyaz"])
         draw.text((185, 80), "Aktif", font=self.f_kucuk, fill=RENKLER["gri_acik"])
         draw.line([0, 135, VIDEO_GENISLIK, 135], fill=RENKLER["gri_koyu"], width=1)
 
-    def _ciz_ust_bilgi(self, draw):
-        bbox = draw.textbbox((0,0), "Bugün", font=self.f_saat)
-        draw.text(((VIDEO_GENISLIK-(bbox[2]-bbox[0]))//2, 165), "Bugün", font=self.f_saat, fill=RENKLER["gri_orta"])
+    def _ciz_ust_bilgi(self, draw): draw.text(((VIDEO_GENISLIK-80)//2, 165), "Bugün", font=self.f_saat, fill=RENKLER["gri_orta"])
 
     def _ciz_input_bar(self, draw):
         y = VIDEO_YUKSEKLIK - 130
-        draw.rectangle([0, y - 10, VIDEO_GENISLIK, VIDEO_YUKSEKLIK], fill=RENKLER["header_bg"])
-        _yuvarlatilmis_dikdortgen(draw, (25, y, VIDEO_GENISLIK - 115, y + 85), 42, RENKLER["input_bg"], RENKLER["input_kenarlik"])
-        draw.text((55, y + 22), "Bir mesaj yazin...", font=self.f_input, fill=RENKLER["gri_koyu"])
-        btn_cx, btn_cy = VIDEO_GENISLIK - 65, y + 42
-        draw.ellipse([btn_cx-38, btn_cy-38, btn_cx+38, btn_cy+38], fill=RENKLER["mavi"])
-        draw.text((btn_cx-12, btn_cy-18), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
+        draw.rectangle([0, y-10, VIDEO_GENISLIK, VIDEO_YUKSEKLIK], fill=RENKLER["header_bg"])
+        _yuvarlatilmis_dikdortgen(draw, (25, y, VIDEO_GENISLIK-115, y+85), 42, RENKLER["input_bg"], RENKLER["input_kenarlik"])
+        draw.text((55, y+22), "Bir mesaj yazin...", font=self.f_input, fill=RENKLER["gri_koyu"])
+        draw.ellipse([VIDEO_GENISLIK-103, y+4, VIDEO_GENISLIK-27, y+80], fill=RENKLER["mavi"])
+        draw.text((VIDEO_GENISLIK-77, y+24), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
     def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
         import subprocess
-        print(f"  [Video] Frameler oluşturuluyor (Toplam: {TOPLAM_FRAME})...")
-        frameler = []
-        for i in range(TOPLAM_FRAME):
-            frameler.append(self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME))
-            if i % 50 == 0: print(f"    - Frame {i}/{TOPLAM_FRAME}")
+        print(f"  [Video] Paralel üretim başlatıldı (Çekirdek: {cpu_count()})...")
+        
+        # Multiprocessing ile kareleri paralel çiziyoruz (HIZIN ANAHTARI)
+        args_list = [(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
+        with Pool(processes=cpu_count()) as pool:
+            frameler = pool.map(_render_frame_worker, args_list)
             
         print("  [Video] MoviePy klip oluşturuluyor...")
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
-        
         sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
-        print(f"  [Video] Sessiz video kaydediliyor: {os.path.basename(sessiz_video)}")
-        klip.write_videofile(sessiz_video, fps=VIDEO_FPS, codec="libx264", logger=None)
+        klip.write_videofile(sessiz_video, fps=VIDEO_FPS, codec="libx264", audio=False, logger=None, preset="ultrafast")
         
-        print("  [Video] Müzik seçiliyor...")
         muzik_yolu = muzik_sec(tema)
         if muzik_yolu and os.path.exists(muzik_yolu):
             try:
-                print(f"  [FFmpeg] Sesi birleştiriyor: {os.path.basename(muzik_yolu)}")
-                cmd = ['ffmpeg', '-y', '-i', sessiz_video, '-stream_loop', '-1', '-i', muzik_yolu, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-filter_complex', '[1:a]volume=0.30[a]', '-map', '0:v:0', '-map', '[a]', '-shortest', cikti_yolu]
-                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                cmd = ['ffmpeg', '-y', '-i', sessiz_video, '-stream_loop', '-1', '-i', muzik_yolu, '-c:v', 'copy', '-c:a', 'aac', '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-filter:a', 'volume=0.30', cikti_yolu]
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
                 if os.path.exists(sessiz_video): os.remove(sessiz_video)
-                print("  [Video] Başarıyla tamamlandı.")
                 return cikti_yolu
-            except Exception as e:
-                print(f"  [FFmpeg] Hata: {e}")
-                os.rename(sessiz_video, cikti_yolu)
-        else:
-            print("  [Video] Müzik yok, sessiz video kullanılıyor.")
-            os.rename(sessiz_video, cikti_yolu)
+            except: os.rename(sessiz_video, cikti_yolu)
+        else: os.rename(sessiz_video, cikti_yolu)
         return cikti_yolu

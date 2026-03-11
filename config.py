@@ -47,27 +47,31 @@ RENKLER = {
     "kirmizi_nokta": (255, 80, 80),
 }
 
-# Theme -> Music Vibe Eşleşmesi (Prompt Madde 2)
+# Theme -> Music Vibe Eşleşmesi (Güncellendi: +10 Yeni Kategori)
 THEME_VIBES = {
     "ilişki": ["romantic_tension", "lonely_night"],
     "iliski": ["romantic_tension", "lonely_night"],
     "cinsellik": ["romantic_tension"],
     "aldatma": ["guilty_feeling"],
     "yalnızlık": ["lonely_night"],
-    "yalnizlik": ["lonely_night"],
     "pişmanlık": ["guilty_feeling"],
-    "pismanlik": ["guilty_feeling"],
     "kıskançlık": ["romantic_tension"],
-    "kiskanclik": ["romantic_tension"],
     "öfke": ["secret_confession"],
-    "ofke": ["secret_confession"],
     "merak": ["secret_confession"],
     "özsaygı": ["lonely_night"],
-    "ozsaygi": ["lonely_night"],
     "iş hayatı": ["secret_confession"],
-    "is hayati": ["secret_confession"],
-    "is": ["secret_confession"],
-    "genel": ["midnight_thoughts", "lonely_night"]
+    "genel": ["midnight_thoughts", "lonely_night"],
+    # Yeni Eklenenler
+    "eski sevgili": ["guilty_feeling", "lonely_night"],
+    "yalanlar": ["secret_confession"],
+    "ihanet": ["guilty_feeling"],
+    "gizli aşk": ["romantic_tension"],
+    "utanç": ["secret_confession"],
+    "çocukluk": ["midnight_thoughts"],
+    "aile sırları": ["secret_confession"],
+    "komşular": ["secret_confession"],
+    "okul": ["midnight_thoughts"],
+    "hayaller": ["midnight_thoughts"]
 }
 
 # Fallback Vibe Havuzu (Prompt Madde 3)
