@@ -271,12 +271,17 @@
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('aktif'));
     document.getElementById(`inner-${id}`).classList.add('aktif');
     el.classList.add('aktif');
+
+    // Üretim loglarını takip etmeye başla
     clearInterval(prodLoopTimer);
-    if(id==='v-hizli' || id==='v-tekli') prodLoopTimer = setInterval(prodDurumKontrol, 2000);
-    if(id==='v-ayarlar') configYukle();
+    if(id==='v-hizli' || id==='v-tekli') {
+        prodLoopTimer = setInterval(prodDurumKontrol, 2000);
+        prodDurumKontrol();
+    }
   }
 
-  function filtre(deger, el) {
+  async function hesaplariYukle() {
+
     document.querySelectorAll('.badge').forEach(b => b.classList.remove('aktif'));
     el.classList.add('aktif');
     currentFilter = deger;
