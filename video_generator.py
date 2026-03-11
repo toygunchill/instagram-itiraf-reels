@@ -3,7 +3,6 @@ import textwrap
 import numpy as np
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from multiprocessing import Pool, cpu_count
 
 from config import (
     VIDEO_GENISLIK, VIDEO_YUKSEKLIK, VIDEO_FPS, VIDEO_SURE,
@@ -49,16 +48,6 @@ def _metin_sar(metin: str, max_karakter: int = 32) -> list[str]:
         satirlar.extend(wrapped if wrapped else [""])
     return satirlar
 
-# Global nesne havuzu (Multiprocessing için gerekli)
-_gen_instance = None
-
-def _render_frame_worker(args):
-    """Paralel çalışan render fonksiyonu."""
-    global _gen_instance
-    if _gen_instance is None:
-        _gen_instance = VideoGenerator()
-    return _gen_instance.frame_olustur_core(*args)
-
 
 class VideoGenerator:
     def __init__(self, sayfa_adi: str = "gizli_itiraf_edenler"):
@@ -91,43 +80,37 @@ class VideoGenerator:
             x += (bbox[2] - bbox[0])
 
     def story_olustur(self, metin: str, cikti_yolu: str) -> str:
-        """Premium Story üretimi (Optimize edildi)."""
-        print(f"  [Story] Tasarlanıyor...")
+        """Optimize edilmiş Story üretimi."""
+        print(f"  [Story] Üretiliyor...")
         c1, c4 = (131, 58, 180), (10, 10, 10)
-        f_story_main = _font_yukle(75)
-        f_story_header = _font_yukle(30)
-
-        # Tek bir ana kare oluştur ve hepsine kopyala (Story animasyonsuz olduğu için)
         img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
         draw = ImageDraw.Draw(img)
         for y in range(VIDEO_YUKSEKLIK):
-            ratio_y = y / VIDEO_YUKSEKLIK
-            draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(int(c1[0]*(1-ratio_y) + c4[0]*ratio_y), int(c1[1]*(1-ratio_y) + c4[1]*ratio_y), int(c1[2]*(1-ratio_y) + c4[2]*ratio_y)))
+            ratio = y / VIDEO_YUKSEKLIK
+            draw.line([(0, y), (VIDEO_GENISLIK, y)], fill=(int(c1[0]*(1-ratio) + c4[0]*ratio), int(c1[1]*(1-ratio) + c4[1]*ratio), int(c1[2]*(1-ratio) + c4[2]*ratio)))
         
         overlay = Image.new('RGBA', (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), (0,0,0,0))
         ImageDraw.Draw(overlay).rounded_rectangle([80, 450, VIDEO_GENISLIK - 80, 1250], radius=50, fill=(255, 255, 255, 30), outline=(255, 255, 255, 60), width=3)
         img.paste(Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB'))
-        self._draw_mixed_text(draw, (0, 510), "✨ GÜNÜN İTİRAFI ✨", font=f_story_header, center=True)
         
+        self._draw_mixed_text(draw, (0, 510), "✨ GÜNÜN İTİRAFI ✨", font=_font_yukle(30), center=True)
         satirlar = textwrap.wrap(metin, width=16)
         curr_y = 630
+        f_main = _font_yukle(75)
         for s in satirlar:
-            self._draw_mixed_text(draw, (0, curr_y), s, font=f_story_main, center=True)
+            self._draw_mixed_text(draw, (0, curr_y), s, font=f_main, center=True)
             curr_y += 95
         
         _yuvarlatilmis_dikdortgen(draw, (290, 1150, 790, 1290), 40, fill=(255,255,255))
         draw.text((365, 1195), "İTİRAFINI YAZ...", font=_font_yukle(35), fill=(80,80,80))
-        draw.text((100, 1290), f"@{self.sayfa_adi}", font=f_story_header, fill=(255,255,255,180))
+        draw.text((100, 1290), f"@{self.sayfa_adi}", font=_font_yukle(30), fill=(255,255,255,180))
 
-        frame_np = np.array(img)
-        frameler = [frame_np] * 150 # 150 kareyi saniyeler içinde oluşturur
-        
-        klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
+        frame = np.array(img)
+        klip = ImageSequenceClip([frame] * 150, fps=VIDEO_FPS)
         klip.write_videofile(cikti_yolu, fps=VIDEO_FPS, codec="libx264", audio_codec="aac", logger=None)
         return cikti_yolu
 
-    def frame_olustur_core(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
-        """Asıl render işlemini yapan çekirdek metod."""
+    def frame_olustur(self, metin, gonderen, admin_reply, frame_no, toplam_frame):
         img = Image.new("RGB", (VIDEO_GENISLIK, VIDEO_YUKSEKLIK), RENKLER["arka_plan"])
         draw = ImageDraw.Draw(img)
         self._ciz_header(draw)
@@ -193,17 +176,17 @@ class VideoGenerator:
 
     def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None) -> str:
         import subprocess
-        print(f"  [Video] Paralel üretim başlatıldı (Çekirdek: {cpu_count()})...")
+        print(f"  [Video] Üretim başlatıldı. Tema: {tema}")
         
-        # Multiprocessing ile kareleri paralel çiziyoruz (HIZIN ANAHTARI)
-        args_list = [(metin, gonderen, admin_reply, i, TOPLAM_FRAME) for i in range(TOPLAM_FRAME)]
-        with Pool(processes=cpu_count()) as pool:
-            frameler = pool.map(_render_frame_worker, args_list)
+        frameler = []
+        for i in range(TOPLAM_FRAME):
+            frameler.append(self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME))
+            if i % 100 == 0: print(f"    - İlerleme: %{int(i/TOPLAM_FRAME*100)}")
             
-        print("  [Video] MoviePy klip oluşturuluyor...")
         klip = ImageSequenceClip(frameler, fps=VIDEO_FPS)
         sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
         klip.write_videofile(sessiz_video, fps=VIDEO_FPS, codec="libx264", audio=False, logger=None, preset="ultrafast")
+        klip.close()
         
         muzik_yolu = muzik_sec(tema)
         if muzik_yolu and os.path.exists(muzik_yolu):
@@ -211,6 +194,7 @@ class VideoGenerator:
                 cmd = ['ffmpeg', '-y', '-i', sessiz_video, '-stream_loop', '-1', '-i', muzik_yolu, '-c:v', 'copy', '-c:a', 'aac', '-map', '0:v:0', '-map', '1:a:0', '-shortest', '-filter:a', 'volume=0.30', cikti_yolu]
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
                 if os.path.exists(sessiz_video): os.remove(sessiz_video)
+                print("  [Video] Başarıyla tamamlandı.")
                 return cikti_yolu
             except: os.rename(sessiz_video, cikti_yolu)
         else: os.rename(sessiz_video, cikti_yolu)
