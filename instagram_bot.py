@@ -280,8 +280,11 @@ class InstagramBot:
             if os.path.exists(thumb): os.remove(thumb)
             return True
         except Exception as e:
+            # Hata mesajını güvenli bir şekilde metne çevir
+            err_text = str(e).lower() if e is not None else ""
+            
             # Eğer hata mesajı içinde 'status': 'ok' geçiyorsa başarılı say
-            if "'status': 'ok'" in str(e).lower() or '"status": "ok"' in str(e).lower():
+            if "'status': 'ok'" in err_text or '"status": "ok"' in err_text:
                 log("Bilgi: Bilinmeyen bir hata oluştu ama Instagram 'ok' yanıtı döndü. Başarılı sayılıyor...")
                 self.daily_stats["shares"] += 1
                 self._stats_kaydet()
