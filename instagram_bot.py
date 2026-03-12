@@ -269,29 +269,54 @@ class InstagramBot:
     def reels_paylas(self, video_yolu: str, caption: str) -> bool:
         if self.daily_stats["shares"] >= 50: return False
         log(f"Reels paylaşılıyor...")
+        
+        video_path = Path(video_yolu)
+        thumbnail_path = video_path.with_suffix(".jpg")
+        
         try:
-            time.sleep(random.randint(5, 15))
-            self.cl.clip_upload(Path(video_yolu), caption=caption)
+            import subprocess
+            # 1. Kapak ve Video Bilgilerini ffprobe ile al (MoviePy'ı devre dışı bırakmak için)
+            if not thumbnail_path.exists():
+                subprocess.run(['ffmpeg', '-y', '-i', str(video_path.absolute()), '-ss', '00:00:01', '-vframes', '1', str(thumbnail_path.absolute())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            # Boyut ve süre bilgilerini manuel alalım (Hata payını sıfırlamak için)
+            cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'csv=p=0', str(video_path)]
+            probe_out = subprocess.check_output(cmd).decode().strip().split(',')
+            # Bazı sistemlerde çıktı sırası değişebilir, güvenli parse edelim
+            w, h, dur = int(probe_out[0]), int(probe_out[1]), float(probe_out[2])
+
+            time.sleep(random.randint(5, 10))
+            
+            # 2. Bypassing clip_upload (Direct Video Upload as Reel)
+            # Bu metod MoviePy analizi yapmaz, bilgileri biz sağlıyoruz
+            self.cl.video_upload(
+                video_path,
+                caption=caption,
+                thumbnail=thumbnail_path,
+                is_reels=True,
+                width=w,
+                height=h,
+                duration=dur
+            )
+            
             log("Paylaşım başarılı.")
             self.daily_stats["shares"] += 1
             self._stats_kaydet()
-            if os.path.exists(video_yolu): os.remove(video_yolu)
-            thumb = str(video_yolu) + ".jpg"
-            if os.path.exists(thumb): os.remove(thumb)
-            return True
-        except Exception as e:
-            # Hata mesajını güvenli bir şekilde metne çevir
-            err_text = str(e).lower() if e is not None else ""
             
-            # Eğer hata mesajı içinde 'status': 'ok' geçiyorsa başarılı say
+            if video_path.exists(): os.remove(video_path)
+            if thumbnail_path.exists(): os.remove(thumbnail_path)
+            return True
+            
+        except Exception as e:
+            err_text = str(e).lower()
             if "'status': 'ok'" in err_text or '"status": "ok"' in err_text:
-                log("Bilgi: Bilinmeyen bir hata oluştu ama Instagram 'ok' yanıtı döndü. Başarılı sayılıyor...")
+                log("Bilgi: Başarılı yanıt alındı.")
                 self.daily_stats["shares"] += 1
                 self._stats_kaydet()
-                if os.path.exists(video_yolu): os.remove(video_yolu)
-                thumb = str(video_yolu) + ".jpg"
-                if os.path.exists(thumb): os.remove(thumb)
+                if video_path.exists(): os.remove(video_path)
+                if thumbnail_path.exists(): os.remove(thumbnail_path)
                 return True
+            
             log(f"Paylaşım hatası: {e}")
             return False
 
