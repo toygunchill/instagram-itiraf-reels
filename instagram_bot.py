@@ -308,16 +308,32 @@ class InstagramBot:
         meta = video_manager.meta_yukle()
         simdi = datetime.now()
         bekleyenler = [k for k in meta.values() if k.get("durum") == "bekliyor" and k.get("planlanan_paylasim")]
-        if not bekleyenler: return
-        bekleyenler.sort(key=lambda x: x["planlanan_paylasim"])
-        k = bekleyenler[0]
-        if simdi >= datetime.fromisoformat(k["planlanan_paylasim"]):
-            video_yolu = str(OUTPUT_DIR / k["dosya"])
-            if Path(video_yolu).exists():
-                if self.reels_paylas(video_yolu, k["caption"]):
-                    video_manager.video_durum_guncelle(k["id"], "paylasıldı")
-            else:
-                video_manager.video_durum_guncelle(k["id"], "dosya_yok")
+        
+        # Zamanı gelmiş veya geçmiş olanları bul ve sırala
+        gecmis_videolar = sorted(
+            [k for k in bekleyenler if datetime.fromisoformat(k["planlanan_paylasim"]) <= simdi],
+            key=lambda x: x["planlanan_paylasim"]
+        )
+
+        if not gecmis_videolar:
+            log("Paylaşım zamanı gelmiş video yok.")
+            return
+
+        # Sadece İLK (en eski bekleyen) videoyu paylaş
+        k = gecmis_videolar[0]
+        video_yolu = str(OUTPUT_DIR / k["dosya"])
+        
+        if Path(video_yolu).exists():
+            log(f"Sıradaki video paylaşılıyor: {k['dosya']}")
+            if self.reels_paylas(video_yolu, k["caption"]):
+                video_manager.video_durum_guncelle(k["id"], "paylasıldı")
+                # Çok fazla video birikmişse araya 5-8 dk güvenlik süresi koy
+                if len(gecmis_videolar) > 1:
+                    log(f"Bekleyen {len(gecmis_videolar)-1} video daha var. 5-8 dk güvenlik beklemesi yapılıyor...")
+                    time.sleep(random.randint(300, 480))
+        else:
+            log(f"Video dosyası bulunamadı, işaretleniyor: {k['dosya']}")
+            video_manager.video_durum_guncelle(k["id"], "paylasıldı")
 
     def calistir(self, mode="all"):
         time.sleep(random.randint(1, 10))

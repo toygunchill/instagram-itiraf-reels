@@ -434,7 +434,8 @@ async def run_single_production(text, persona, theme, admin_reply, share):
         production_manager.log(f"Video üretiliyor...")
         video_gen.video_olustur(itiraf, persona, theme, video_yolu, admin_reply=admin_reply, logger=production_manager.log)
         
-        # 3. Metadata Kaydet
+        # 3. Metadata Kaydet (Hemen paylaşılmak üzere 'bekliyor' olarak işaretle)
+        # Paylaşım saati ŞİMDİ olarak set ediliyor ki bot çalışınca ilk bunu alsın
         video_manager.video_ekle(
             video_id=video_id,
             dosya=video_adi,
@@ -442,23 +443,11 @@ async def run_single_production(text, persona, theme, admin_reply, share):
             kategori=kategori_meta,
             caption=caption,
             gonderen=persona,
+            planlanan_paylasim=datetime.now().isoformat(),
             admin_reply=admin_reply
         )
-        production_manager.log("Video başarıyla üretildi.")
-        
-        # 4. Hemen Paylaş
-        if share:
-            production_manager.log("Instagram'a bağlanılıyor...")
-            from instagram_bot import InstagramBot
-            bot = InstagramBot()
-            bot.giris_yap()
-            production_manager.log("Paylaşım başlatıldı...")
-            ok = bot.reels_paylas(video_yolu, caption)
-            if ok:
-                video_manager.video_durum_guncelle(video_id, "paylasıldı")
-                production_manager.log("✅ Instagram'da başarıyla paylaşıldı!")
-            else:
-                production_manager.log("❌ Paylaşım başarısız oldu (Loglara bakın).")
+        production_manager.log("✅ Video üretildi ve Paylaşım Botu sırasına eklendi.")
+        production_manager.log("İpucu: Paylaşılması için 'Paylaşım Botu'nu başlatmayı unutmayın!")
                 
     except Exception as e:
         production_manager.log(f"❌ HATA: {str(e)}")
