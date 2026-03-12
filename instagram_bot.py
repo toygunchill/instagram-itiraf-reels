@@ -279,12 +279,15 @@ class InstagramBot:
             if not thumbnail_path.exists():
                 subprocess.run(['ffmpeg', '-y', '-i', str(video_path.absolute()), '-ss', '00:00:01', '-vframes', '1', str(thumbnail_path.absolute())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            # Boyut ve süre bilgilerini manuel alalım (Hata payını sıfırlamak için)
-            cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'csv=p=0', str(video_path)]
-            probe_out = subprocess.check_output(cmd).decode().strip().split(',')
-            # Bazı sistemlerde çıktı sırası değişebilir, güvenli parse edelim
-            w, h, dur = int(probe_out[0]), int(probe_out[1]), float(probe_out[2])
+            # Boyut ve süre bilgilerini JSON formatında alalım (En güvenli yöntem)
+            cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'json', str(video_path)]
+            probe_out = json.loads(subprocess.check_output(cmd).decode())
+            
+            w = int(probe_out['streams'][0]['width'])
+            h = int(probe_out['streams'][0]['height'])
+            dur = float(probe_out['format']['duration'])
 
+            log(f"Video doğrulandı: {w}x{h}, Süre: {dur}sn")
             time.sleep(random.randint(5, 10))
             
             # 2. Bypassing clip_upload (Direct Video Upload as Reel)
