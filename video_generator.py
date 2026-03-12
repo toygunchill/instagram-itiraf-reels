@@ -141,20 +141,23 @@ class VideoGenerator:
 
     def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None, logger=None) -> str:
         """Düşük Bellek Modu: Kareleri diske yazar ve FFmpeg ile birleştirir."""
+        import shutil
+        import subprocess
+        
         def _log(msg):
             if logger: logger(msg)
             else: print(msg)
 
-        temp_dir = Path("temp_frames")
+        # Geçici klasörü tam yol olarak tanımla
+        temp_dir = Path(__file__).parent / "temp_frames"
         if temp_dir.exists(): shutil.rmtree(temp_dir)
-        temp_dir.mkdir()
+        temp_dir.mkdir(parents=True, exist_ok=True)
 
         _log(f"Üretim başladı. Tema: {tema}")
         for i in range(TOPLAM_FRAME):
             img = self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME)
             img.save(temp_dir / f"frame_{i:04d}.jpg", quality=85)
             
-            # Her %10'luk dilimde görsel progress bar bas
             if i % (TOPLAM_FRAME // 10) == 0 or i == TOPLAM_FRAME - 1:
                 percent = int((i + 1) / TOPLAM_FRAME * 100)
                 bar_len = 20
@@ -171,7 +174,16 @@ class VideoGenerator:
             '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultafast',
             sessiz_video
         ]
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        try:
+            # stderr yakalayarak hatayı daha net görelim
+            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                _log(f"FFmpeg Hatası: {result.stderr[:200]}")
+                raise Exception("FFmpeg birleştirme başarısız.")
+        except Exception as e:
+            _log(f"Kritik Hata: {e}")
+            raise e
 
         _log("Müzik seçiliyor ve indiriliyor...")
         muzik_yolu = muzik_sec(tema)
