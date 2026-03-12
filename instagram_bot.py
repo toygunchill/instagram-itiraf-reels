@@ -296,7 +296,7 @@ class InstagramBot:
                 video_path,
                 caption=caption,
                 thumbnail=thumbnail_path,
-                is_reels=True,
+                product_type="clips", # Doğru parametre
                 width=w,
                 height=h,
                 duration=dur
