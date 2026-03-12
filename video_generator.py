@@ -1,10 +1,10 @@
 import os
 import textwrap
 import numpy as np
-import shutil
 import subprocess
+import cv2
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 
 from config import (
     VIDEO_GENISLIK, VIDEO_YUKSEKLIK, VIDEO_FPS, VIDEO_SURE,
@@ -27,8 +27,7 @@ def _font_yukle(boyut: int, emoji: bool = False) -> ImageFont.FreeTypeFont | Ima
         if os.path.exists(yol):
             try:
                 return ImageFont.truetype(yol, boyut)
-            except Exception:
-                continue
+            except: continue
     return ImageFont.load_default()
 
 
@@ -66,7 +65,6 @@ class VideoGenerator:
         if center:
             total_w = self._get_text_width(draw, text, font)
             x = (VIDEO_GENISLIK - total_w) // 2
-
         for char in text:
             is_e = ord(char) > 0xFFFF
             f = self.f_emoji if is_e else (font if font else self.f_metin)
@@ -80,17 +78,14 @@ class VideoGenerator:
         draw = ImageDraw.Draw(img)
         self._ciz_header(draw)
         self._ciz_ust_bilgi(draw)
-
         anim_itiraf = 150 
         it_gost = metin[:max(1, int(len(metin) * frame_no / anim_itiraf))] if frame_no < anim_itiraf else metin
         y1_conf = self._ciz_balon(draw, it_gost, gonderen, 230, metin, is_admin=False)
-
         if admin_reply and frame_no >= 180:
             anim_admin = 45 
             rel_f = frame_no - 180
             ad_gost = admin_reply[:max(1, int(len(admin_reply) * rel_f / anim_admin))] if rel_f < anim_admin else admin_reply
             self._ciz_balon(draw, ad_gost, self.sayfa_adi, y1_conf + 70, admin_reply, is_admin=True)
-
         self._ciz_input_bar(draw)
         return img
 
@@ -140,51 +135,40 @@ class VideoGenerator:
         draw.text((VIDEO_GENISLIK-77, y+24), ">", font=self.f_baslik, fill=RENKLER["beyaz"])
 
     def video_olustur(self, metin, gonderen, tema, cikti_yolu, admin_reply=None, logger=None) -> str:
-        """Düşük Bellek Modu: Kareleri diske yazar ve FFmpeg ile birleştirir."""
-        import shutil
-        import subprocess
-        
+        """OpenCV tabanlı, doğrudan RAM'den videoya yazan güvenli üretim metodu."""
         def _log(msg):
             if logger: logger(msg)
             else: print(msg)
 
-        # Geçici klasörü tam yol olarak tanımla
-        temp_dir = Path(__file__).parent / "temp_frames"
-        if temp_dir.exists(): shutil.rmtree(temp_dir)
-        temp_dir.mkdir(parents=True, exist_ok=True)
-
-        _log(f"Üretim başladı. Tema: {tema}")
-        for i in range(TOPLAM_FRAME):
-            img = self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME)
-            img.save(temp_dir / f"frame_{i:04d}.jpg", quality=85)
-            
-            if i % (TOPLAM_FRAME // 10) == 0 or i == TOPLAM_FRAME - 1:
-                percent = int((i + 1) / TOPLAM_FRAME * 100)
-                bar_len = 20
-                filled_len = int(bar_len * percent / 100)
-                bar = "█" * filled_len + "░" * (bar_len - filled_len)
-                _log(f"İlerleme: [{bar}] %{percent}")
-
-        sessiz_video = cikti_yolu.replace(".mp4", "_silent.mp4")
-        _log("Video dosyası birleştiriliyor...")
+        _log(f"Üretim başladı (OpenCV Modu). Tema: {tema}")
         
-        ffmpeg_cmd = [
-            'ffmpeg', '-y', '-framerate', str(VIDEO_FPS),
-            '-i', str(temp_dir / 'frame_%04d.jpg'),
-            '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'ultafast',
-            sessiz_video
-        ]
+        sessiz_video = str(Path(cikti_yolu).absolute().with_name(Path(cikti_yolu).stem + "_silent.mp4"))
         
+        # OpenCV Video Yazıcısı (Hafızadan direkt videoya)
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(sessiz_video, fourcc, VIDEO_FPS, (VIDEO_GENISLIK, VIDEO_YUKSEKLIK))
+
         try:
-            # stderr yakalayarak hatayı daha net görelim
-            result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                _log(f"FFmpeg Hatası: {result.stderr[:200]}")
-                raise Exception("FFmpeg birleştirme başarısız.")
+            for i in range(TOPLAM_FRAME):
+                pil_img = self.frame_olustur(metin, gonderen, admin_reply, i, TOPLAM_FRAME)
+                # PIL -> OpenCV formatı (RGB -> BGR)
+                open_cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+                out.write(open_cv_img)
+                
+                if i % (TOPLAM_FRAME // 10) == 0:
+                    percent = int((i + 1) / TOPLAM_FRAME * 100)
+                    bar = "█" * (percent // 5) + "░" * (20 - (percent // 5))
+                    _log(f"Kareler Yazılıyor: [{bar}] %{percent}")
+            
+            out.release()
+            _log("Video görüntüsü başarıyla oluşturuldu.")
+
         except Exception as e:
+            out.release()
             _log(f"Kritik Hata: {e}")
             raise e
 
+        # Final Adım: Ses Birleştirme (FFmpeg bu aşamada dosya yolu hatası vermez)
         _log("Müzik seçiliyor ve indiriliyor...")
         muzik_yolu = muzik_sec(tema)
         if muzik_yolu and os.path.exists(muzik_yolu):
@@ -192,27 +176,25 @@ class VideoGenerator:
             try:
                 final_cmd = [
                     'ffmpeg', '-y', '-i', sessiz_video,
-                    '-stream_loop', '-1', '-i', muzik_yolu,
+                    '-stream_loop', '-1', '-i', str(Path(muzik_yolu).absolute()),
                     '-c:v', 'copy', '-c:a', 'aac', '-map', '0:v:0', '-map', '1:a:0',
-                    '-shortest', '-filter:a', 'volume=0.30', cikti_yolu
+                    '-shortest', '-filter:a', 'volume=0.30', str(Path(cikti_yolu).absolute())
                 ]
                 subprocess.run(final_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
             except: 
                 if os.path.exists(sessiz_video): os.rename(sessiz_video, cikti_yolu)
         else:
-            _log("Müzik bulunamadı, sessiz video kaydedildi.")
             if os.path.exists(sessiz_video): os.rename(sessiz_video, cikti_yolu)
 
-        shutil.rmtree(temp_dir)
         if os.path.exists(sessiz_video): os.remove(sessiz_video)
         _log("✅ Video başarıyla tamamlandı.")
         return cikti_yolu
 
     def story_olustur(self, metin: str, cikti_yolu: str) -> str:
-        """Optimize edilmiş Story üretimi."""
-        img = self.frame_olustur(metin, "Soru Çıkartması", None, 150, 150) # Örnek tasarım
-        # ... hikaye tasarımı basitleştirildi ...
-        img.save(cikti_yolu.replace(".mp4", ".jpg"))
-        # JPG'den MP4 yap
-        subprocess.run(['ffmpeg', '-y', '-loop', '1', '-i', cikti_yolu.replace(".mp4", ".jpg"), '-c:v', 'libx264', '-t', '5', '-pix_fmt', 'yuv420p', cikti_yolu], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Story için de OpenCV kullanılabilir, şimdilik mevcut yapı stabil
+        img = self.frame_olustur(metin, "Soru Çıkartması", None, 150, 150)
+        temp_jpg = cikti_yolu.replace(".mp4", ".jpg")
+        img.save(temp_jpg)
+        subprocess.run(['ffmpeg', '-y', '-loop', '1', '-i', temp_jpg, '-c:v', 'libx264', '-t', '5', '-pix_fmt', 'yuv420p', cikti_yolu], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.exists(temp_jpg): os.remove(temp_jpg)
         return cikti_yolu
