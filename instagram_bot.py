@@ -275,36 +275,41 @@ class InstagramBot:
         
         try:
             import subprocess
-            # 1. Kapak ve Video Bilgilerini ffprobe ile al (MoviePy'ı devre dışı bırakmak için)
+            # 1. Ön Hazırlık (Session ve Dosya Bilgileri)
+            try:
+                self.cl.get_timeline_feed() # Oturumu ısıt (warm-up)
+            except:
+                log("Oturum tazeleniyor...")
+                self.giris_yap()
+
             if not thumbnail_path.exists():
                 subprocess.run(['ffmpeg', '-y', '-i', str(video_path.absolute()), '-ss', '00:00:01', '-vframes', '1', str(thumbnail_path.absolute())], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            # Boyut ve süre bilgilerini JSON formatında alalım (En güvenli yöntem)
             cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'json', str(video_path)]
             probe_out = json.loads(subprocess.check_output(cmd).decode())
-            
             w = int(probe_out['streams'][0]['width'])
             h = int(probe_out['streams'][0]['height'])
             dur = float(probe_out['format']['duration'])
 
-            log(f"Video doğrulandı: {w}x{h}, Süre: {dur}sn")
-            time.sleep(random.randint(5, 10))
+            log(f"Video doğrulandı ({w}x{h}, {dur}sn). Yükleme başlatılıyor...")
+            time.sleep(random.randint(3, 7))
             
-            # 2. Bypassing clip_upload (Direct Video Upload via extra_data)
-            # Bu metod MoviePy analizi yapmaz, bilgileri extra_data ile sağlıyoruz
+            # 2. Yükleme (MoviePy Analizini Zorla Atlatma)
+            # extra_data içindeki bilgiler sayesinde instagrapi moviepy'ı çağırmaz
             self.cl.video_upload(
                 video_path,
                 caption=caption,
                 thumbnail=thumbnail_path,
                 extra_data={
-                    "product_type": "clips", # Reels olarak gitmesini sağlar
-                    "width": str(w),
-                    "height": str(h),
-                    "duration": str(dur)
+                    "product_type": "clips",
+                    "width": w,
+                    "height": h,
+                    "duration": dur,
+                    "skip_extract_metadata": True # Bazı sürümlerde MoviePy'ı tamamen susturur
                 }
             )
             
-            log("Paylaşım başarılı.")
+            log("✅ Paylaşım başarılı.")
             self.daily_stats["shares"] += 1
             self._stats_kaydet()
             
@@ -314,6 +319,24 @@ class InstagramBot:
             
         except Exception as e:
             err_text = str(e).lower()
+            
+            # Eğer hata login kaynaklıysa BİR KEZ daha giriş yapıp dene
+            if "login_required" in err_text:
+                log("Oturum hatası algılandı, son kez giriş yapılıp deneniyor...")
+                self.giris_yap()
+                # Özyinelemeli (recursive) çağırmak yerine tek seferlik manuel tekrar
+                try:
+                    self.cl.video_upload(video_path, caption=caption, thumbnail=thumbnail_path, extra_data={"product_type": "clips", "width": w, "height": h, "duration": dur})
+                    log("✅ İkinci denemede paylaşım başarılı.")
+                    self.daily_stats["shares"] += 1
+                    self._stats_kaydet()
+                    if video_path.exists(): os.remove(video_path)
+                    if thumbnail_path.exists(): os.remove(thumbnail_path)
+                    return True
+                except Exception as e2:
+                    log(f"İkinci deneme de başarısız: {e2}")
+                    return False
+
             if "'status': 'ok'" in err_text or '"status": "ok"' in err_text:
                 log("Bilgi: Başarılı yanıt alındı.")
                 self.daily_stats["shares"] += 1
@@ -322,7 +345,7 @@ class InstagramBot:
                 if thumbnail_path.exists(): os.remove(thumbnail_path)
                 return True
             
-            log(f"Paylaşım hatası: {e}")
+            log(f"❌ Paylaşım hatası: {e}")
             return False
 
     def story_paylas(self, video_yolu: str) -> bool:
