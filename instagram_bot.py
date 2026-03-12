@@ -290,16 +290,18 @@ class InstagramBot:
             log(f"Video doğrulandı: {w}x{h}, Süre: {dur}sn")
             time.sleep(random.randint(5, 10))
             
-            # 2. Bypassing clip_upload (Direct Video Upload as Reel)
-            # Bu metod MoviePy analizi yapmaz, bilgileri biz sağlıyoruz
+            # 2. Bypassing clip_upload (Direct Video Upload via extra_data)
+            # Bu metod MoviePy analizi yapmaz, bilgileri extra_data ile sağlıyoruz
             self.cl.video_upload(
                 video_path,
                 caption=caption,
                 thumbnail=thumbnail_path,
-                product_type="clips", # Doğru parametre
-                width=w,
-                height=h,
-                duration=dur
+                extra_data={
+                    "product_type": "clips", # Reels olarak gitmesini sağlar
+                    "width": str(w),
+                    "height": str(h),
+                    "duration": str(dur)
+                }
             )
             
             log("Paylaşım başarılı.")
